@@ -100,7 +100,7 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def run_quick_test():
+def run_quick_test(device):
     """
     Rychly test na overenie ze vsetko funguje.
     Spusti len par experimentov s malym poctom epoch.
@@ -114,6 +114,7 @@ def run_quick_test():
         model_types=["cnn"],
         da_methods=["baseline", "dann"],
         domains=DOMAIN_NAMES,
+        device=device,
     )
     
     # Spustime len jeden experiment
@@ -133,7 +134,7 @@ def run_quick_test():
     return results
 
 
-def run_single(args):
+def run_single(args, device):
     """
     Spusti jeden experiment podla argumentov.
     """
@@ -147,6 +148,7 @@ def run_single(args):
     runner = ExperimentRunner(
         model_types=[args.model],
         da_methods=[args.method],
+        device=device,
     )
     
     if args.method == "multi_source":
@@ -169,11 +171,11 @@ def run_single(args):
     return results
 
 
-def run_all(args):
+def run_all(args, device):
     """
     Spusti vsetky experimenty.
     """
-    runner = ExperimentRunner()
+    runner = ExperimentRunner(device=device)
     
     all_results = runner.run_all_experiments(num_epochs=args.epochs)
     
@@ -214,20 +216,21 @@ def main():
     # Co chceme spustit?
     if args.quick:
         # Rychly test
-        results = run_quick_test()
+        results = run_quick_test(device)
     elif args.run_all:
         # Vsetky experimenty
-        results = run_all(args)
+        results = run_all(args, device)
     elif args.method == "all":
         # Vsetky DA metody pre dany model a domeny
         runner = ExperimentRunner(
             model_types=[args.model],
             da_methods=ADAPTATION_METHODS,
+            device=device,
         )
         results = runner.run_all_experiments(num_epochs=args.epochs)
     else:
         # Jeden konkretny experiment
-        results = run_single(args)
+        results = run_single(args, device)
     
     # Celkovy cas
     total_time = time.time() - start_time
