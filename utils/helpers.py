@@ -65,26 +65,6 @@ def ensure_dir(path):
     os.makedirs(path, exist_ok=True)
 
 
-def count_parameters(model):
-    """
-    Spocita pocet parametrov v modeli.
-    Uzitocne na porovnanie velkosti modelov.
-    
-    Parametre:
-        model (nn.Module): PyTorch model
-    
-    Vrati:
-        tuple: (celkovy pocet, trenovatelny pocet)
-    """
-    total = sum(p.numel() for p in model.parameters())
-    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    
-    print(f"  Celkovy pocet parametrov: {total:,}")
-    print(f"  Trenovatelnych parametrov: {trainable:,}")
-    
-    return total, trainable
-
-
 def format_time(seconds):
     """
     Formatuje cas z sekund na citatelny format.

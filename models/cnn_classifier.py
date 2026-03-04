@@ -15,7 +15,6 @@ Autori: Dmytro Protsun, Mykyta Olym
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from config.settings import CNN_CONFIG
 

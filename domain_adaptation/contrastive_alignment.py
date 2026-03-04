@@ -19,6 +19,8 @@ Paper: Inspirovana "Supervised Contrastive Learning" (Khosla et al., 2020)
 Autori: Dmytro Protsun, Mykyta Olym
 """
 
+import copy
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -312,6 +314,7 @@ class ContrastiveTrainer:
         
         best_val_acc = 0.0
         patience_counter = 0
+        best_model_state = None
         
         print(f"\n=== Contrastive Alignment trenovanie ({num_epochs} epoch) ===")
         
@@ -330,6 +333,11 @@ class ContrastiveTrainer:
                 if val_acc > best_val_acc:
                     best_val_acc = val_acc
                     patience_counter = 0
+                    best_model_state = {
+                        'feature_extractor': copy.deepcopy(self.feature_extractor.state_dict()),
+                        'label_classifier': copy.deepcopy(self.label_classifier.state_dict()),
+                        'projection_head': copy.deepcopy(self.projection_head.state_dict()),
+                    }
                 else:
                     patience_counter += 1
                 
@@ -341,6 +349,13 @@ class ContrastiveTrainer:
                 print(f"  Epocha {epoch+1}/{num_epochs}: "
                       f"Label Loss = {label_loss:.4f}, "
                       f"Contrastive = {contrastive_loss:.4f}{val_info}")
+        
+        # Nacitame najlepsi model ak mame
+        if best_model_state is not None:
+            self.feature_extractor.load_state_dict(best_model_state['feature_extractor'])
+            self.label_classifier.load_state_dict(best_model_state['label_classifier'])
+            self.projection_head.load_state_dict(best_model_state['projection_head'])
+            print(f"  Najlepsia validacna presnost: {best_val_acc:.4f}")
         
         return {
             "train_losses": self.train_losses,

@@ -9,7 +9,6 @@ Autori: Dmytro Protsun, Mykyta Olym
 """
 
 import os
-import copy
 import torch
 import torch.nn as nn
 import numpy as np
@@ -192,8 +191,14 @@ class ModelTrainer:
             )
         elif self.adaptation_method == "multi_source":
             # Pre multi-source potrebujeme vediet pocet source domen
-            # to nastavime neskor pri trenovani
-            self.trainer = None  # vytvorime neskor
+            # Vytvorime s predvolenym poctom 1, prestavime v train_multi_source()
+            self.label_classifier = self.label_classifier.to(self.device)
+            self.trainer = MultiSourceTrainer(
+                self.feature_extractor,
+                self.label_classifier,
+                num_sources=1,
+                device=self.device,
+            )
         else:
             raise ValueError(f"Neznama DA metoda: {self.adaptation_method}")
 
@@ -243,14 +248,13 @@ class ModelTrainer:
         print(f"Trenovanie: {self.model_type} + multi_source ({len(source_loaders)} zdroje)")
         print(f"{'='*60}")
         
-        # Vytvorime multi-source trainer ak este neexistuje
-        if self.trainer is None:
-            self.trainer = MultiSourceTrainer(
-                self.feature_extractor,
-                self.label_classifier,
-                num_sources=len(source_loaders),
-                device=self.device,
-            )
+        # Aktualizujeme multi-source trainer s aktualnym poctom source domen
+        self.trainer = MultiSourceTrainer(
+            self.feature_extractor,
+            self.label_classifier,
+            num_sources=len(source_loaders),
+            device=self.device,
+        )
         
         history = self.trainer.train(source_loaders, target_loader, val_loader, num_epochs)
         return history

@@ -151,28 +151,3 @@ def audio_to_spectrogram_tensor(audio, sr=None, spec_type="mel"):
     spec_tensor = torch.FloatTensor(spec_image).unsqueeze(0)  # [1, H, W]
     
     return spec_tensor
-
-
-def batch_audio_to_spectrograms(audio_batch, sr=None, spec_type="mel"):
-    """
-    Konvertuje batch audio signalov na batch spektrogramov.
-    
-    Parametre:
-        audio_batch (torch.Tensor): batch audio signalov [batch_size, length]
-        sr: vzorkovacia frekvencia
-        spec_type: typ spektrogramu
-    
-    Vrati:
-        torch.Tensor: batch spektrogramov [batch_size, 1, height, width]
-    """
-    specs = []
-    
-    for i in range(audio_batch.shape[0]):
-        audio = audio_batch[i]
-        spec = audio_to_spectrogram_tensor(audio, sr, spec_type)
-        specs.append(spec)
-    
-    # Stack do jedneho tensoru
-    batch_specs = torch.stack(specs, dim=0)
-    
-    return batch_specs

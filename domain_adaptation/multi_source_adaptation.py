@@ -1,7 +1,7 @@
 """
 Multi-Source Domain Adaptation.
 Namiesto jednej source domeny pouzivame VIACERO source domen.
-Napriklad: trénujeme na PC-GITA + Neurovoz, testujeme na PDITA.
+Napriklad: trénujeme na MDVR-KCL (ReadText + SpontaneousDialogue), testujeme na ItalianPVS.
 
 Princip:
     Ked mame viacero source domen, mame viac dat na trenovanie
@@ -20,6 +20,8 @@ Paper: "Moment Matching for Multi-Source Domain Adaptation" (Peng et al., 2019)
 Autori: Dmytro Protsun, Mykyta Olym
 """
 
+import copy
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -27,32 +29,6 @@ import numpy as np
 
 from config.settings import MULTI_SOURCE_CONFIG, TRAINING_CONFIG
 from domain_adaptation.mmd_adaptation import compute_mmd
-
-
-class DomainWeightNetwork(nn.Module):
-    """
-    Siet ktora sa uci vahy pre jednotlive source domeny.
-    Blizsie domeny ktore su viac podobne target domene dostanu vyssiu vahu.
-    """
-    
-    def __init__(self, feature_dim, num_sources):
-        """
-        Parametre:
-            feature_dim: velkost feature vektora
-            num_sources: pocet source domen
-        """
-        super(DomainWeightNetwork, self).__init__()
-        
-        self.weight_net = nn.Sequential(
-            nn.Linear(feature_dim, 64),
-            nn.ReLU(),
-            nn.Linear(64, num_sources),
-            nn.Softmax(dim=1),  # vahy musia byt kladne a sucet = 1
-        )
-    
-    def forward(self, x):
-        """Vypocita vahy pre source domeny na základe features."""
-        return self.weight_net(x)
 
 
 class MultiSourceTrainer:
@@ -245,6 +221,7 @@ class MultiSourceTrainer:
         
         best_val_acc = 0.0
         patience_counter = 0
+        best_model_state = None
         
         print(f"\n=== Multi-Source DA trenovanie ({num_epochs} epoch, "
               f"{self.num_sources} source domen) ===")
@@ -264,6 +241,10 @@ class MultiSourceTrainer:
                 if val_acc > best_val_acc:
                     best_val_acc = val_acc
                     patience_counter = 0
+                    best_model_state = {
+                        'feature_extractor': copy.deepcopy(self.feature_extractor.state_dict()),
+                        'label_classifier': copy.deepcopy(self.label_classifier.state_dict()),
+                    }
                 else:
                     patience_counter += 1
                 
@@ -275,6 +256,12 @@ class MultiSourceTrainer:
                 print(f"  Epocha {epoch+1}/{num_epochs}: "
                       f"Label Loss = {label_loss:.4f}, "
                       f"Domain Loss = {domain_loss:.6f}{val_info}")
+        
+        # Nacitame najlepsi model ak mame
+        if best_model_state is not None:
+            self.feature_extractor.load_state_dict(best_model_state['feature_extractor'])
+            self.label_classifier.load_state_dict(best_model_state['label_classifier'])
+            print(f"  Najlepsia validacna presnost: {best_val_acc:.4f}")
         
         return {
             "train_losses": self.train_losses,

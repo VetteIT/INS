@@ -3,93 +3,16 @@ Tradicne ML klasifikatory pre detekciu Parkinsonovej choroby.
 Tieto modely pracuju s extrahovanymi akustickymi prizvukmi (MFCC, jitter, shimmer...).
 Nepracuju priamo so surovou recou ani so spektrogramami.
 
-Implementujeme dva klasifikatory:
-1. SVM (Support Vector Machine) - klasicky ML model
-2. MLP (Multi-Layer Perceptron) - jednoducha NN v sklearn
-
-Pre domain adaptation pouzivame MLP v PyTorchu (aby sme mali gradient).
+Implementujeme MLP (Multi-Layer Perceptron) v PyTorchu,
+aby sme mohli robit domain adaptation (potrebujeme gradient).
 
 Autori: Dmytro Protsun, Mykyta Olym
 """
 
-import numpy as np
 import torch
 import torch.nn as nn
-from sklearn.svm import SVC
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
 
-from config.settings import SVM_CONFIG, MLP_CONFIG
-
-
-class SVMClassifier:
-    """
-    SVM klasifikator pre PD detekciu.
-    Pouzivame sklearn SVC s RBF kernelom.
-    SVM je klasicky ML model ktory hlada optimalnu separacnu rovinu.
-    
-    Poznamka: SVM nepodporuje gradient, takze ho nemozeme pouzit
-    priamo s domain adaptation technikami. Pouzivame ho len ako baseline.
-    """
-
-    def __init__(self):
-        """Inicializacia SVM modelu s preprocessing pipeline."""
-        
-        # Pipeline: StandardScaler (normalizacia) -> SVM
-        # StandardScaler normalizuje features na priemer=0, std=1
-        # To je dolezite pretoze SVM je citlive na skalu features
-        self.model = Pipeline([
-            ("scaler", StandardScaler()),
-            ("svm", SVC(
-                kernel=SVM_CONFIG["kernel"],
-                C=SVM_CONFIG["C"],
-                gamma=SVM_CONFIG["gamma"],
-                probability=True,  # chceme aj pravdepodobnosti, nie len label
-                random_state=42,
-            ))
-        ])
-        
-        self.is_fitted = False  # ci uz bol model natrenovany
-
-    def fit(self, X, y):
-        """
-        Natrénuje SVM model na danych datach.
-        
-        Parametre:
-            X (numpy array): features [n_samples, n_features]
-            y (numpy array): labely [n_samples]
-        """
-        print(f"  Trenujem SVM na {X.shape[0]} vzorkach, {X.shape[1]} prizvukoch...")
-        self.model.fit(X, y)
-        self.is_fitted = True
-        print(f"  SVM natrenovane!")
-
-    def predict(self, X):
-        """
-        Predikcie pomocou natrenovaneho modelu.
-        
-        Parametre:
-            X: features
-        
-        Vrati:
-            numpy array: predikovane labely
-        """
-        if not self.is_fitted:
-            raise RuntimeError("SVM este nebol natrenovany! Zavolajte najprv fit().")
-        
-        return self.model.predict(X)
-
-    def predict_proba(self, X):
-        """
-        Predikcia pravdepodobnosti.
-        
-        Vrati:
-            numpy array: pravdepodobnosti pre kazdu triedu [n_samples, n_classes]
-        """
-        if not self.is_fitted:
-            raise RuntimeError("SVM este nebol natrenovany!")
-        
-        return self.model.predict_proba(X)
+from config.settings import MLP_CONFIG
 
 
 class MLPTraditionalClassifier(nn.Module):

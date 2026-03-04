@@ -19,6 +19,8 @@ Paper: "Learning Transferable Features with Deep Adaptation Networks" (Long et a
 Autori: Dmytro Protsun, Mykyta Olym
 """
 
+import copy
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -247,6 +249,7 @@ class MMDTrainer:
         
         best_val_acc = 0.0
         patience_counter = 0
+        best_model_state = None
         
         print(f"\n=== MMD trenovanie ({num_epochs} epoch) ===")
         
@@ -265,6 +268,10 @@ class MMDTrainer:
                 if val_acc > best_val_acc:
                     best_val_acc = val_acc
                     patience_counter = 0
+                    best_model_state = {
+                        'feature_extractor': copy.deepcopy(self.feature_extractor.state_dict()),
+                        'label_classifier': copy.deepcopy(self.label_classifier.state_dict()),
+                    }
                 else:
                     patience_counter += 1
                 
@@ -276,6 +283,12 @@ class MMDTrainer:
                 print(f"  Epocha {epoch+1}/{num_epochs}: "
                       f"Label Loss = {label_loss:.4f}, "
                       f"MMD Loss = {mmd_loss:.6f}{val_info}")
+        
+        # Nacitame najlepsi model ak mame
+        if best_model_state is not None:
+            self.feature_extractor.load_state_dict(best_model_state['feature_extractor'])
+            self.label_classifier.load_state_dict(best_model_state['label_classifier'])
+            print(f"  Najlepsia validacna presnost: {best_val_acc:.4f}")
         
         return {
             "train_losses": self.train_losses,

@@ -21,6 +21,9 @@ env/
 
 # Datasety (prilis velke na Git)
 datasets/
+*.wav
+*.WAV
+*.xlsx
 
 # Vysledky a modely (generovane)
 results/

@@ -15,6 +15,7 @@ matplotlib>=3.7.0
 
 # Data manipulacia
 pandas>=2.0.0
+openpyxl>=3.1.0
 
 # Obrazky (pre resize spektrogramov)
 Pillow>=9.5.0

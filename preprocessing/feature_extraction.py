@@ -55,7 +55,7 @@ def extract_mfcc(audio, sr=None, n_mfcc=None):
 def extract_mfcc_stats(audio, sr=None, n_mfcc=None):
     """
     Extrahuje statistiky z MFCC - priemer, smerodajna odchylka, min, max.
-    Toto pouzivame pre tradicne ML modely (SVM, MLP) ktore
+    Toto pouzivame pre tradicne ML modely (MLP) ktore
     potrebuju vstup s pevnou velkostou.
     
     Parametre:
@@ -294,7 +294,7 @@ def extract_acoustic_features(audio, sr=None):
     Extrahuje VSETKY akusticke prizvuky z audio signalu.
     Toto je hlavna funkcia ktora spoji vsetky prizvuky do jedneho vektora.
     
-    Pouzivame ju pre tradicne ML modely (SVM, MLP).
+    Pouzivame ju pre tradicne ML modely (MLP).
     
     Parametre:
         audio: audio signal

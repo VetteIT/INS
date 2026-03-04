@@ -23,6 +23,8 @@ Paper: "Domain-Adversarial Training of Neural Networks" (Ganin et al., 2016)
 Autori: Dmytro Protsun, Mykyta Olym
 """
 
+import copy
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -322,6 +324,7 @@ class DANNTrainer:
         
         best_val_acc = 0.0
         patience_counter = 0
+        best_model_state = None
         
         print(f"\n=== DANN trenovanie ({num_epochs} epoch) ===")
         
@@ -347,6 +350,11 @@ class DANNTrainer:
                 if val_acc > best_val_acc:
                     best_val_acc = val_acc
                     patience_counter = 0
+                    best_model_state = {
+                        'feature_extractor': copy.deepcopy(self.feature_extractor.state_dict()),
+                        'label_classifier': copy.deepcopy(self.label_classifier.state_dict()),
+                        'domain_classifier': copy.deepcopy(self.domain_classifier.state_dict()),
+                    }
                 else:
                     patience_counter += 1
                 
@@ -360,6 +368,13 @@ class DANNTrainer:
                       f"Label Loss = {label_loss:.4f}, "
                       f"Domain Loss = {domain_loss:.4f}, "
                       f"λ = {lambda_val:.4f}{val_info}")
+        
+        # Nacitame najlepsi model ak mame
+        if best_model_state is not None:
+            self.feature_extractor.load_state_dict(best_model_state['feature_extractor'])
+            self.label_classifier.load_state_dict(best_model_state['label_classifier'])
+            self.domain_classifier.load_state_dict(best_model_state['domain_classifier'])
+            print(f"  Najlepsia validacna presnost: {best_val_acc:.4f}")
         
         history = {
             "train_losses": self.train_losses,

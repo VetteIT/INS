@@ -3,7 +3,7 @@ Hlavny skript na spustenie VSETKYCH experimentov.
 Spusta vsetky kombinacie:
 - 3 typy modelov (CNN, Traditional, Wav2Vec2)
 - 5 DA technik (Baseline, DANN, MMD, Contrastive, Multi-source)
-- 3 domeny (PC-GITA, Neurovoz, PDITA) v roznych source/target kombinaciach
+- 2 domeny (MDVR-KCL, ItalianPVS) v roznych source/target kombinaciach
 
 Celkovo to je vela experimentov, ale kazdy experiment sa spusti automaticky.
 
@@ -12,8 +12,6 @@ Autori: Dmytro Protsun, Mykyta Olym
 
 import os
 import time
-import torch
-import torch.nn as nn
 import numpy as np
 
 from config.settings import (
@@ -295,6 +293,11 @@ class ExperimentRunner:
             }
             
             self.all_results[experiment_name] = results
+            
+            # Vizualizacia (ak mame historiu)
+            if history:
+                self._save_experiment_plots(results, history)
+            
             trainer.save_model(f"{experiment_name}.pt")
             
             return results
@@ -423,8 +426,11 @@ class ExperimentRunner:
                     "out_domain" in exp_data):
                     
                     method_name = exp_data["da_method"]
-                    if method_name not in comparison_results:
-                        comparison_results[method_name] = exp_data["out_domain"]
+                    # Pouzijeme experiment name s domenami aby sme nezahadzovali
+                    # druhy smer (napr. A->B vs B->A)
+                    direction = f"{exp_data.get('source_domain', '?')}->{exp_data.get('target_domain', '?')}"
+                    key = f"{method_name} ({direction})"
+                    comparison_results[key] = exp_data["out_domain"]
             
             if comparison_results:
                 for metric in ["accuracy", "auc", "f1_score"]:

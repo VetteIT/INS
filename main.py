@@ -11,14 +11,14 @@ Tento skript je vstupny bod celeho projektu. Spustite ho pomocou:
 Argumenty:
     --model       Typ modelu: cnn, traditional, wav2vec (default: cnn)
     --method      DA technika: baseline, dann, mmd, contrastive, multi_source, all
-    --source      Source domena: PC-GITA, Neurovoz, PDITA
-    --target      Target domena: PC-GITA, Neurovoz, PDITA
+    --source      Source domena: MDVR-KCL, ItalianPVS
+    --target      Target domena: MDVR-KCL, ItalianPVS
     --epochs      Pocet epoch (default: 50)
     --run-all     Spusti vsetky experimenty
 
 Priklady:
-    python main.py --model cnn --method baseline --source PC-GITA --target Neurovoz
-    python main.py --model cnn --method dann --source PC-GITA --target PDITA --epochs 30
+    python main.py --model cnn --method baseline --source MDVR-KCL --target ItalianPVS
+    python main.py --model cnn --method dann --source ItalianPVS --target MDVR-KCL --epochs 30
     python main.py --run-all --epochs 20
 
 Autori: Dmytro Protsun (dmytro.protsun@student.tuke.sk)
@@ -56,7 +56,7 @@ def parse_arguments():
     parser.add_argument(
         "--model", type=str, default="cnn",
         choices=["cnn", "traditional", "wav2vec"],
-        help="Typ modelu: cnn, traditional (SVM/MLP), wav2vec (default: cnn)"
+        help="Typ modelu: cnn, traditional (MLP), wav2vec (default: cnn)"
     )
     
     parser.add_argument(
@@ -66,13 +66,13 @@ def parse_arguments():
     )
     
     parser.add_argument(
-        "--source", type=str, default="PC-GITA",
+        "--source", type=str, default="MDVR-KCL",
         choices=DOMAIN_NAMES,
         help="Source (zdrojova) domena"
     )
     
     parser.add_argument(
-        "--target", type=str, default="Neurovoz",
+        "--target", type=str, default="ItalianPVS",
         choices=DOMAIN_NAMES,
         help="Target (cielova) domena"
     )
@@ -120,8 +120,8 @@ def run_quick_test():
     results = runner.run_single_experiment(
         model_type="cnn",
         da_method="baseline",
-        source_domain="PC-GITA",
-        target_domain="Neurovoz",
+        source_domain="MDVR-KCL",
+        target_domain="ItalianPVS",
         num_epochs=5,
     )
     

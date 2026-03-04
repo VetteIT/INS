@@ -8,15 +8,18 @@ clovek nebol aj v train aj v test - to by bolo podvadzanie).
 Autori: Dmytro Protsun, Mykyta Olym
 """
 
+import os
 import torch
 from torch.utils.data import DataLoader, Subset
 import numpy as np
 from sklearn.model_selection import GroupKFold
 
 from config.settings import TRAINING_CONFIG
-from data.pcgita_dataset import PCGITADataset
-from data.neurovoz_dataset import NeurovozDataset
-from data.pdita_dataset import PDITADataset
+from data.mdvr_kcl_dataset import MDVRKCLDataset
+from data.italian_pvs_dataset import ItalianPVSDataset
+
+# Na Windows num_workers > 0 moze sposobovat problemy, preto 0
+_NUM_WORKERS = 0 if os.name == "nt" else TRAINING_CONFIG.get("num_workers", 0)
 
 
 def get_domain_datasets(domain_name, transform=None, feature_type="raw"):
@@ -25,7 +28,7 @@ def get_domain_datasets(domain_name, transform=None, feature_type="raw"):
     Toto je jednoducha factory funkcia - podla nazvu vrati spravny dataset.
     
     Parametre:
-        domain_name (str): nazov domeny ("PC-GITA", "Neurovoz", "PDITA")
+        domain_name (str): nazov domeny ("MDVR-KCL", "ItalianPVS")
         transform: transformacie
         feature_type: typ features
         
@@ -34,9 +37,8 @@ def get_domain_datasets(domain_name, transform=None, feature_type="raw"):
     """
     # Jednoduche mapovanie nazov -> trieda
     dataset_map = {
-        "PC-GITA": PCGITADataset,
-        "Neurovoz": NeurovozDataset,
-        "PDITA": PDITADataset,
+        "MDVR-KCL": MDVRKCLDataset,
+        "ItalianPVS": ItalianPVSDataset,
     }
     
     if domain_name not in dataset_map:
@@ -110,7 +112,7 @@ def _speaker_split(dataset, speaker_ids, test_size, batch_size):
         train_subset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=0,  # na Windows moze byt problem s num_workers > 0
+        num_workers=_NUM_WORKERS,
         drop_last=False,
     )
     
@@ -118,7 +120,7 @@ def _speaker_split(dataset, speaker_ids, test_size, batch_size):
         test_subset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=0,
+        num_workers=_NUM_WORKERS,
         drop_last=False,
     )
     
@@ -148,7 +150,7 @@ def _random_split(dataset, test_size, batch_size):
         train_subset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=0,
+        num_workers=_NUM_WORKERS,
         drop_last=False,
     )
     
@@ -156,43 +158,8 @@ def _random_split(dataset, test_size, batch_size):
         test_subset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=0,
+        num_workers=_NUM_WORKERS,
         drop_last=False,
     )
     
     return train_loader, test_loader
-
-
-def create_domain_adaptation_loaders(source_dataset, target_dataset, batch_size=None):
-    """
-    Vytvori DataLoadery pre domain adaptation.
-    Source domena ma labely, target domena nema (unsupervised DA).
-    
-    Parametre:
-        source_dataset: zdrojovy dataset (s labelmi)
-        target_dataset: cielovy dataset (bez labelov pri DA)
-        batch_size: velkost batchu
-        
-    Vrati:
-        tuple: (source_loader, target_loader)
-    """
-    if batch_size is None:
-        batch_size = TRAINING_CONFIG["batch_size"]
-    
-    source_loader = DataLoader(
-        source_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=0,
-        drop_last=True,  # drop last aby boli batche rovnako velke
-    )
-    
-    target_loader = DataLoader(
-        target_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=0,
-        drop_last=True,
-    )
-    
-    return source_loader, target_loader

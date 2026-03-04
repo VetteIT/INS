@@ -20,9 +20,8 @@ import os
 BASE_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "datasets")
 
 # Cesty k jednotlivym datasetom
-PCGITA_DIR = os.path.join(BASE_DATA_DIR, "PC-GITA")
-NEUROVOZ_DIR = os.path.join(BASE_DATA_DIR, "Neurovoz")
-PDITA_DIR = os.path.join(BASE_DATA_DIR, "PDITA")
+MDVR_KCL_DIR = os.path.join(BASE_DATA_DIR, "MDVR-KCL")
+ITALIAN_PVS_DIR = os.path.join(BASE_DATA_DIR, "ItalianPVS")
 
 # Priecinok na ukladanie vysledkov a grafov
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
@@ -73,13 +72,6 @@ CNN_CONFIG = {
     "feature_dim": 256,         # velkost feature vektora z CNN
 }
 
-# SVM model nastavenia
-SVM_CONFIG = {
-    "kernel": "rbf",            # radial basis function kernel
-    "C": 1.0,                   # regularizacny parameter
-    "gamma": "scale",           # gamma parameter pre RBF
-}
-
 # MLP model nastavenia
 MLP_CONFIG = {
     "hidden_sizes": [256, 128, 64],  # velkosti skrytych vrstiev
@@ -122,6 +114,7 @@ DANN_CONFIG = {
     "alpha": 10.0,              # parameter pre gradient reversal
     "learning_rate": 0.001,
     "hidden_dim": 256,          # skryta vrstva domain classifiera
+    "dropout_rate": 0.3,        # dropout pre domain classifier
 }
 
 # MMD - Maximum Mean Discrepancy
@@ -152,7 +145,7 @@ MULTI_SOURCE_CONFIG = {
 # ============================================================
 
 # Nazvy datasetov ktore pouzivame ako domeny
-DOMAIN_NAMES = ["PC-GITA", "Neurovoz", "PDITA"]
+DOMAIN_NAMES = ["MDVR-KCL", "ItalianPVS"]
 
 # Adaptacne techniky ktore chceme porovnat
 ADAPTATION_METHODS = ["baseline", "dann", "mmd", "contrastive", "multi_source"]

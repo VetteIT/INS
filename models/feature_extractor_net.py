@@ -5,7 +5,7 @@ pouziva sa ako zaklad pre domain adaptation techniky.
 
 Idea je taka ze feature extractor sa nauci takú reprezentaciu,
 ktora je uzitocna pre klasifikaciu ale zaroven invariantna voci domene.
-(t.j. features z PC-GITA a Neurovoz by mali vyzerat podobne)
+(t.j. features z MDVR-KCL a ItalianPVS by mali vyzerat podobne)
 
 Autori: Dmytro Protsun, Mykyta Olym
 """

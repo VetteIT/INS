@@ -1,6 +1,6 @@
 """
 Zakladna trieda pre vsetky datasety.
-Vsetky datasety (PC-GITA, Neurovoz, PDITA) dedia z tejto triedy.
+Vsetky datasety (MDVR-KCL, ItalianPVS) dedia z tejto triedy.
 To nam usetri kopu kodu pretoze kazdy dataset ma podobne funkcie.
 
 Autori: Dmytro Protsun, Mykyta Olym
@@ -19,7 +19,7 @@ from config.settings import SAMPLE_RATE, SEGMENT_LENGTH, SEGMENT_OVERLAP
 class BaseAudioDataset(Dataset):
     """
     Zakladna trieda pre audio datasety.
-    Kazdy dataset (PC-GITA, Neurovoz, PDITA) bude diedit z tejto triedy.
+    Kazdy dataset (MDVR-KCL, ItalianPVS) bude diedit z tejto triedy.
     
     Tato trieda vie:
     - nacitat audio subory
@@ -34,7 +34,7 @@ class BaseAudioDataset(Dataset):
         
         Parametre:
             data_dir (str): cesta k priecinku s datami
-            domain_name (str): nazov domeny (napr. "PC-GITA")
+            domain_name (str): nazov domeny (napr. "MDVR-KCL")
             transform: transformacie ktore chceme aplikovat na data
             feature_type (str): typ prizvukov - "spectrogram", "mfcc", alebo "raw"
         """
@@ -137,7 +137,7 @@ class BaseAudioDataset(Dataset):
             idx (int): index vzorky
             
         Vrati:
-            tuple: (audio_data, label, domain_label)
+            tuple: (audio_data, label)
         """
         # nacitame audio
         audio_path = self.audio_paths[idx]
