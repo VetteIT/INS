@@ -1,0 +1,23 @@
+# Zavislosti pre projekt
+# Upozornenie: Nainštalujte pomocou: pip install -r requirements.txt
+
+# Zakladne kniznice pre ML
+torch>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+
+# Spracovanie audia
+librosa>=0.10.0
+soundfile>=0.12.0
+
+# Vizualizacia
+matplotlib>=3.7.0
+
+# Data manipulacia
+pandas>=2.0.0
+
+# Obrazky (pre resize spektrogramov)
+Pillow>=9.5.0
+
+# Wav2Vec2 a ine foundation modely (volitelne - velke)
+transformers>=4.30.0
