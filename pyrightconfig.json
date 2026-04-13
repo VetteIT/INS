@@ -7,5 +7,10 @@
     "reportUnusedImport": "warning",
     "reportUnusedVariable": "warning",
     "reportUnusedFunction": "warning",
-    "exclude": ["data/", "**/__pycache__"]
+    "exclude": [
+        "data/",
+        "**/__pycache__",
+        "**/node_modules",
+        "**/.*"
+    ]
 }

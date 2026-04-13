@@ -98,6 +98,14 @@ def train_dann(model, source_loader, target_loader,
     domain_criterion = nn.CrossEntropyLoss()  # doménová strata bez váh
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
 
+    # Inverse LR schedule podľa Ganin et al. (2015), Eq. 11:
+    # μ_p = μ_0 / (1 + α·p)^β, kde α=10, β=0.75
+    # LR klesá ~7x počas trénovania → stabilný koniec
+    scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer,
+        lr_lambda=lambda epoch: 1.0 / (1.0 + 10.0 * epoch / max(num_epochs - 1, 1)) ** 0.75
+    )
+
     # Uložíme pôvodnú max lambda pre progresívne zvyšovanie
     max_lambda = model.grl.lambda_val
 
@@ -153,10 +161,14 @@ def train_dann(model, source_loader, target_loader,
         avg_loss = epoch_loss / max(n_batches, 1)
         losses.append(avg_loss)
 
+        # LR schedule step
+        scheduler.step()
+
         if (epoch + 1) % 10 == 0:
+            current_lr = optimizer.param_groups[0]['lr']
             print(f'  Epoch [{epoch+1}/{num_epochs}], '
                   f'Loss: {avg_loss:.4f} '
-                  f'(λ={current_lambda:.3f}, '
+                  f'(λ={current_lambda:.3f}, lr={current_lr:.6f}, '
                   f'class: {class_loss.item():.4f}, '
                   f'domain: {domain_loss.item():.4f})')
 

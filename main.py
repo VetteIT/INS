@@ -189,15 +189,17 @@ def main():
     results['CNN A→B (baseline)'] = metrics
     print_metrics('CNN A→B baseline', metrics)
 
-    # SVM cross-domain
+    # SVM cross-domain — per-domain normalizácia (konzistentné s NN prístupom)
+    # Každá doména normalizovaná vlastným scalerom, rovnako ako create_cross_domain_loaders
     print("\n[SVM] Baseline (bez adaptácie):")
-    svm_cross = Pipeline([
-        ('scaler', StandardScaler()),
-        ('svm', SVC(kernel='rbf', probability=True, random_state=RANDOM_SEED,
-                    class_weight='balanced'))
-    ])
-    svm_cross.fit(X_oxford, y_oxford)
-    metrics = evaluate_svm(svm_cross, X_istanbul, y_istanbul)
+    src_scaler = StandardScaler()
+    tgt_scaler = StandardScaler()
+    X_src_svm = src_scaler.fit_transform(X_oxford)
+    X_tgt_svm = tgt_scaler.fit_transform(X_istanbul)
+    svm_cross = SVC(kernel='rbf', probability=True, random_state=RANDOM_SEED,
+                    class_weight='balanced')
+    svm_cross.fit(X_src_svm, y_oxford)
+    metrics = evaluate_svm(svm_cross, X_tgt_svm, y_istanbul)
     results['SVM A→B (baseline)'] = metrics
     print_metrics('SVM A→B baseline', metrics)
 

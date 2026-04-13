@@ -128,7 +128,9 @@ def create_cross_domain_loaders(X_source, y_source, X_target, y_target):
     source_dataset = ParkinsonDataset(X_source, y_source)
     target_dataset = ParkinsonDataset(X_target, y_target)
 
-    source_loader = DataLoader(source_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    target_loader = DataLoader(target_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    source_loader = DataLoader(source_dataset, batch_size=BATCH_SIZE, shuffle=True,
+                               drop_last=True)
+    target_loader = DataLoader(target_dataset, batch_size=BATCH_SIZE, shuffle=True,
+                               drop_last=True)
 
     return source_loader, target_loader, source_scaler

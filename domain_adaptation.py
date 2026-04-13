@@ -130,18 +130,49 @@ class DANNModel(nn.Module):
 
 def mmd_loss(source_features, target_features):
     """
-    Lineárna MMD strata medzi zdrojovými a cieľovými príznakmi.
+    Multi-kernel MMD s RBF (Gaussovskými) jadrami.
+
+    Na rozdiel od lineárnej MMD (||mean_s - mean_t||²), RBF kernel
+    porovnáva celé distribúcie, nielen ich priemery.
+
+    Ref: Gretton et al. (2012) - "A Kernel Two-Sample Test"
+    Ref: Long et al. (2015) - "Learning Transferable Features with DAN"
+
+    Používame 5 bandwidths okolo mediánu vzdialeností (median heuristic).
 
     Args:
-        source_features: príznaky zo zdrojovej domény (batch, feature_dim)
-        target_features: príznaky z cieľovej domény (batch, feature_dim)
+        source_features: príznaky zo zdrojovej domény (n_s, feature_dim)
+        target_features: príznaky z cieľovej domény (n_t, feature_dim)
 
     Returns:
         MMD² hodnota (scalar)
     """
-    mean_source = source_features.mean(dim=0)
-    mean_target = target_features.mean(dim=0)
-    return torch.sum((mean_source - mean_target) ** 2)
+    n_s = source_features.size(0)
+
+    # Všetky vzorky spolu
+    total = torch.cat([source_features, target_features], dim=0)
+
+    # Párovité L2 vzdialenosti²
+    # torch.cdist: efektívny výpočet vzdialenostnej matice
+    dist_sq = torch.cdist(total, total, p=2).pow(2)
+
+    # Median heuristic pre bandwidth (Gretton et al., 2012)
+    with torch.no_grad():
+        median_sq = dist_sq.median().clamp(min=1e-8)
+
+    # Multi-scale RBF jadrá: k(x,y) = Σ exp(-||x-y||² / (2·σ²))
+    # Viacero σ² okolo mediánu → robustnosť voči škále príznakov
+    kernel_sum = torch.zeros_like(dist_sq)
+    for factor in [0.25, 0.5, 1.0, 2.0, 4.0]:
+        bandwidth = 2.0 * median_sq * factor
+        kernel_sum = kernel_sum + torch.exp(-dist_sq / bandwidth.clamp(min=1e-8))
+
+    # MMD² = E[k(xs,xs')] + E[k(xt,xt')] - 2·E[k(xs,xt)]
+    xx = kernel_sum[:n_s, :n_s].mean()
+    yy = kernel_sum[n_s:, n_s:].mean()
+    xy = kernel_sum[:n_s, n_s:].mean()
+
+    return xx + yy - 2 * xy
 
 
 # ========================================================================
