@@ -22,7 +22,7 @@ Ref: Gretton, A. et al. (2012)
 import torch
 import torch.nn as nn
 from config import (NUM_FEATURES, NUM_CLASSES, NUM_DOMAINS,
-                    HIDDEN_SIZE, FEATURE_DIM, DANN_LAMBDA)
+                    HIDDEN_SIZE, FEATURE_DIM, DANN_LAMBDA, DROPOUT_RATE)
 
 
 # ========================================================================
@@ -85,13 +85,15 @@ class DANNModel(nn.Module):
 
     def __init__(self, input_size=NUM_FEATURES, hidden_size=HIDDEN_SIZE,
                  feature_dim=FEATURE_DIM, num_classes=NUM_CLASSES,
-                 num_domains=NUM_DOMAINS, lambda_val=DANN_LAMBDA):
+                 num_domains=NUM_DOMAINS, lambda_val=DANN_LAMBDA,
+                 dropout=DROPOUT_RATE):
         super(DANNModel, self).__init__()
 
         # Feature Extractor (zdieľaný) - vzor z Cvičenie 3-4
         self.feature_extractor = nn.Sequential(
             nn.Linear(input_size, hidden_size),
             nn.ReLU(),
+            nn.Dropout(dropout),
             nn.Linear(hidden_size, feature_dim),
             nn.ReLU()
         )
@@ -104,6 +106,7 @@ class DANNModel(nn.Module):
         self.domain_classifier = nn.Sequential(
             nn.Linear(feature_dim, hidden_size // 2),
             nn.ReLU(),
+            nn.Dropout(dropout),
             nn.Linear(hidden_size // 2, num_domains)
         )
 
@@ -154,13 +157,15 @@ class MMDModel(nn.Module):
     """
 
     def __init__(self, input_size=NUM_FEATURES, hidden_size=HIDDEN_SIZE,
-                 feature_dim=FEATURE_DIM, num_classes=NUM_CLASSES):
+                 feature_dim=FEATURE_DIM, num_classes=NUM_CLASSES,
+                 dropout=DROPOUT_RATE):
         super(MMDModel, self).__init__()
 
         # Rovnaký feature extractor ako v DANN
         self.feature_extractor = nn.Sequential(
             nn.Linear(input_size, hidden_size),
             nn.ReLU(),
+            nn.Dropout(dropout),
             nn.Linear(hidden_size, feature_dim),
             nn.ReLU()
         )

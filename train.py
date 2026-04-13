@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 from itertools import cycle
 
-from config import DEVICE, NUM_EPOCHS, LEARNING_RATE, MMD_LAMBDA
+from config import DEVICE, NUM_EPOCHS, LEARNING_RATE, MMD_LAMBDA, GRAD_CLIP_NORM, WEIGHT_DECAY
 
 
 # ========================================================================
@@ -19,7 +19,8 @@ from config import DEVICE, NUM_EPOCHS, LEARNING_RATE, MMD_LAMBDA
 # Vzor: Cvičenie 4 - FF.ipynb, trénovací cyklus
 # ========================================================================
 
-def train_model(model, train_loader, num_epochs=NUM_EPOCHS, lr=LEARNING_RATE):
+def train_model(model, train_loader, num_epochs=NUM_EPOCHS, lr=LEARNING_RATE,
+                class_weights=None):
     """
     Štandardné trénovanie klasifikátora (bez domain adaptácie).
     Vzor: Cvičenie 4 - trénovací cyklus na MNIST
@@ -29,14 +30,16 @@ def train_model(model, train_loader, num_epochs=NUM_EPOCHS, lr=LEARNING_RATE):
         train_loader: DataLoader s trénovacími dátami
         num_epochs: počet epoch
         lr: learning rate
+        class_weights: váhy tried pre vyváženú loss (voliteľné)
     """
     model = model.to(DEVICE)
     model.train()
 
     # Loss a optimalizátor - vzor z Cvičenie 4
     # https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    weight = class_weights.to(DEVICE) if class_weights is not None else None
+    criterion = nn.CrossEntropyLoss(weight=weight)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
 
     losses = []
 
@@ -55,6 +58,7 @@ def train_model(model, train_loader, num_epochs=NUM_EPOCHS, lr=LEARNING_RATE):
             # Backward pass - vzor z Cvičenie 4
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP_NORM)
             optimizer.step()
 
             epoch_loss += loss.item()
@@ -76,7 +80,7 @@ def train_model(model, train_loader, num_epochs=NUM_EPOCHS, lr=LEARNING_RATE):
 # ========================================================================
 
 def train_dann(model, source_loader, target_loader,
-               num_epochs=NUM_EPOCHS, lr=LEARNING_RATE):
+               num_epochs=NUM_EPOCHS, lr=LEARNING_RATE, class_weights=None):
     """
     Trénovanie DANN - adversariálna domain adaptácia.
 
@@ -87,14 +91,26 @@ def train_dann(model, source_loader, target_loader,
     model = model.to(DEVICE)
     model.train()
 
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    weight = class_weights.to(DEVICE) if class_weights is not None else None
+    criterion = nn.CrossEntropyLoss(weight=weight)
+    domain_criterion = nn.CrossEntropyLoss()  # doménová strata bez váh
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
+
+    # Uložíme pôvodnú max lambda pre progresívne zvyšovanie
+    max_lambda = model.grl.lambda_val
 
     losses = []
 
     for epoch in range(num_epochs):
         epoch_loss = 0.0
         n_batches = 0
+
+        # Progresívna lambda: lineárne zvyšovanie od 0 do max_lambda
+        # Pôvodný paper: λ_p = 2/(1+exp(-γ·p))-1, my použijeme lineárnu rampu
+        # pre jednoduchosť a stabilitu trénovania
+        progress = epoch / max(num_epochs - 1, 1)
+        current_lambda = max_lambda * progress
+        model.grl.lambda_val = current_lambda
 
         # zip + cycle: iterujeme cez oba loadery súčasne
         # cycle opakuje kratší loader
@@ -116,8 +132,8 @@ def train_dann(model, source_loader, target_loader,
                                             device=DEVICE)
             tgt_domain_labels = torch.ones(tgt_x.size(0), dtype=torch.long,
                                            device=DEVICE)
-            domain_loss = (criterion(src_domain, src_domain_labels) +
-                           criterion(tgt_domain, tgt_domain_labels))
+            domain_loss = (domain_criterion(src_domain, src_domain_labels) +
+                           domain_criterion(tgt_domain, tgt_domain_labels))
 
             # Celková strata
             # GRL v modeli sa stará o obrátenie gradientov domain_loss
@@ -126,6 +142,7 @@ def train_dann(model, source_loader, target_loader,
             # Backward pass
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP_NORM)
             optimizer.step()
 
             epoch_loss += loss.item()
@@ -137,7 +154,8 @@ def train_dann(model, source_loader, target_loader,
         if (epoch + 1) % 10 == 0:
             print(f'  Epoch [{epoch+1}/{num_epochs}], '
                   f'Loss: {avg_loss:.4f} '
-                  f'(class: {class_loss.item():.4f}, '
+                  f'(λ={current_lambda:.3f}, '
+                  f'class: {class_loss.item():.4f}, '
                   f'domain: {domain_loss.item():.4f})')
 
     return losses
@@ -149,7 +167,8 @@ def train_dann(model, source_loader, target_loader,
 # ========================================================================
 
 def train_mmd(model, source_loader, target_loader,
-              num_epochs=NUM_EPOCHS, lr=LEARNING_RATE, mmd_lambda=MMD_LAMBDA):
+              num_epochs=NUM_EPOCHS, lr=LEARNING_RATE, mmd_lambda=MMD_LAMBDA,
+              class_weights=None):
     """
     Trénovanie s MMD stratou.
     Klasifikačná strata + MMD strata medzi zdrojovými a cieľovými príznakmi.
@@ -159,8 +178,9 @@ def train_mmd(model, source_loader, target_loader,
     model = model.to(DEVICE)
     model.train()
 
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    weight = class_weights.to(DEVICE) if class_weights is not None else None
+    criterion = nn.CrossEntropyLoss(weight=weight)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
 
     losses = []
 
@@ -188,6 +208,7 @@ def train_mmd(model, source_loader, target_loader,
 
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP_NORM)
             optimizer.step()
 
             epoch_loss += loss.item()

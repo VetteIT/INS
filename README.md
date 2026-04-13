@@ -13,29 +13,29 @@ extrahovaných z hlasových nahrávok.
 
 Oba datasety sú voľne dostupné z UCI ML Repository (CC BY 4.0):
 
-| Doména | Dataset | Vzorky | Zdroj |
-|--------|---------|--------|-------|
-| A | Oxford Parkinson's (Little et al., 2008) | 195 | [UCI #174](https://archive.ics.uci.edu/dataset/174/parkinsons) |
-| B | Istanbul Replicated Features (Naranjo et al., 2016) | 240 | [UCI #489](https://archive.ics.uci.edu/dataset/489) |
+| Domena | Dataset                                              | Vzorky | Zdroj                                                            |
+| ------ | ---------------------------------------------------- | ------ | ---------------------------------------------------------------- |
+| A      | Oxford Parkinson's (Little et al., 2008)             | 195    | [UCI #174](https://archive.ics.uci.edu/dataset/174/parkinsons)   |
+| B      | Istanbul Replicated Features (Naranjo et al., 2016)  | 240    | [UCI #489](https://archive.ics.uci.edu/dataset/489)              |
 
 **12 spoločných akustických príznakov**: Jitter (4x), Shimmer (4x), HNR, RPDE, DFA, PPE
 
 ## Klasifikátory
 
-| Model | Popis | Cvičenie |
-|-------|-------|----------|
-| MLP | Feed-forward sieť (12→64→32→2) | Cvičenie 4 - FF |
-| CNN1D | 1D konvolučná sieť | Cvičenie 5 - CNN |
-| SVM | Support Vector Machine (scikit-learn) | baseline |
+| Model | Popis                                       | Cvicenie         |
+| ----- | ------------------------------------------- | ---------------- |
+| MLP   | Feed-forward siet (12→64→32→2)               | Cvicenie 4 - FF  |
+| CNN1D | 1D konvolucna siet                          | Cvicenie 5 - CNN |
+| SVM   | Support Vector Machine (scikit-learn)        | baseline         |
 
 ## Domain Adaptation techniky
 
-| Technika | Popis | Referencia |
-|----------|-------|------------|
-| Baseline | Bez adaptácie (train A → test B) | - |
-| DANN | Domain-Adversarial Neural Network | [Ganin et al., 2015](https://arxiv.org/abs/1409.7495) |
-| MMD | Maximum Mean Discrepancy | [Gretton et al., 2012](https://jmlr.org/papers/v13/gretton12a.html) |
-| CORAL | CORrelation ALignment (TODO) | [Sun & Saenko, 2016](https://arxiv.org/abs/1607.01719) |
+| Technika | Popis                                   | Referencia                                                                    |
+| -------- | --------------------------------------- | ----------------------------------------------------------------------------- |
+| Baseline | Bez adaptacie (train A → test B)        | -                                                                             |
+| DANN     | Domain-Adversarial Neural Network       | [Ganin et al., 2015](https://arxiv.org/abs/1409.7495)                         |
+| MMD      | Maximum Mean Discrepancy                | [Gretton et al., 2012](https://jmlr.org/papers/v13/gretton12a.html)          |
+| CORAL    | CORrelation ALignment (TODO)            | [Sun & Saenko, 2016](https://arxiv.org/abs/1607.01719)                        |
 
 ## Inštalácia a spustenie
 
@@ -53,7 +53,7 @@ python main.py             # trénovanie + evaluácia
 
 ## Štruktúra projektu
 
-```
+```text
 parkinson_da/
 ├── config.py              # Konfigurácia a hyperparametre
 ├── download_data.py       # Stiahnutie datasetov z UCI
@@ -75,26 +75,26 @@ parkinson_da/
 
 ### Implementované (Týždeň 1-8)
 
-| Týždeň | Dátum | Úloha | Cvičenie |
-|---------|-------|-------|----------|
-| 1 | 16-22 Feb | Setup projektu, download datasetov | Cv.1 - Tensory |
-| 2 | 23 Feb - 1 Mar | Dataset triedy, DataLoader, explorácia dát | Cv.2 - Práca s dátami |
-| 3 | 2-8 Mar | Štandardizácia príznakov, nn.Module architektúra | Cv.3 - Komponenty NN |
-| 4 | 9-15 Mar | MLP klasifikátor + trénovací cyklus | Cv.4 - FF siete |
-| 5 | 16-22 Mar | CNN1D klasifikátor | Cv.5 - CNN |
-| 6 | 23-28 Mar | SVM baseline + in-domain evaluácia (F1, AUC, Sens, Spec) | Cv.6 - LSTM |
-| 7 | 30 Mar - 5 Apr | DANN implementácia (GRL + adversariálne trénovanie) | Projekt |
-| 8 | 6-12 Apr | MMD implementácia + cross-domain baseline | Projekt |
+| Tyzden | Datum           | Uloha                                                | Cvicenie                |
+| ------ | --------------- | ---------------------------------------------------- | ----------------------- |
+| 1      | 16-22 Feb       | Setup projektu, download datasetov                   | Cv.1 - Tensory          |
+| 2      | 23 Feb - 1 Mar  | Dataset triedy, DataLoader, exploracia dat            | Cv.2 - Praca s datami   |
+| 3      | 2-8 Mar         | Standardizacia priznakov, nn.Module architektura      | Cv.3 - Komponenty NN    |
+| 4      | 9-15 Mar        | MLP klasifikator + trenovaci cyklus                  | Cv.4 - FF siete         |
+| 5      | 16-22 Mar       | CNN1D klasifikator                                   | Cv.5 - CNN              |
+| 6      | 23-28 Mar       | SVM baseline + in-domain evaluacia (F1, AUC)         | Cv.6 - LSTM             |
+| 7      | 30 Mar - 5 Apr  | DANN implementacia (GRL + adversarialne trenovanie)  | Projekt                 |
+| 8      | 6-12 Apr        | MMD implementacia + cross-domain baseline             | Projekt                 |
 
 ### TODO (Týždeň 9-13)
 
-| Týždeň | Dátum | Úloha |
-|---------|-------|-------|
-| 9 | 13-19 Apr | CORAL implementácia (Deep CORAL) |
-| 10 | 20-26 Apr | Multi-source domain adaptation |
-| 11 | 27 Apr - 3 May | Kompletná evaluácia (oba smery, štatistika) |
-| 12 | 4-10 May | Vizualizácia výsledkov, ROC krivky, t-SNE |
-| 13 | 11-17 May | Záverečná správa a prezentácia |
+| Tyzden | Datum           | Uloha                                              |
+| ------ | --------------- | -------------------------------------------------- |
+| 9      | 13-19 Apr       | CORAL implementacia (Deep CORAL)                   |
+| 10     | 20-26 Apr       | Multi-source domain adaptation                     |
+| 11     | 27 Apr - 3 May  | Kompletna evaluacia (oba smery, statistika)        |
+| 12     | 4-10 May        | Vizualizacia vysledkov, ROC krivky, t-SNE          |
+| 13     | 11-17 May       | Zaverecna sprava a prezentacia                     |
 
 ## Metriky
 

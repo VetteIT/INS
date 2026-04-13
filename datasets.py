@@ -36,6 +36,21 @@ class ParkinsonDataset(Dataset):
         return self.features[idx], self.labels[idx]
 
 
+def compute_class_weights(y):
+    """
+    Výpočet váh tried pre vyváženú loss funkciu.
+    Dôležité pre nevyvážené datasety (Oxford: 75% PD / 25% Healthy).
+    https://scikit-learn.org/stable/modules/generated/sklearn.utils.class_weight.compute_class_weight.html
+    """
+    classes = np.unique(y)
+    n_samples = len(y)
+    weights = []
+    for c in classes:
+        count = np.sum(y == c)
+        weights.append(n_samples / (len(classes) * count))
+    return torch.tensor(weights, dtype=torch.float32)
+
+
 def load_domain(domain_name):
     """Načíta CSV súbor pre danú doménu."""
     path = os.path.join(DATA_DIR, f'{domain_name}.csv')

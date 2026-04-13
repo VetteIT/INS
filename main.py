@@ -110,7 +110,8 @@ def main():
     )
     svm_a = Pipeline([
         ('scaler', StandardScaler()),
-        ('svm', SVC(kernel='rbf', probability=True, random_state=RANDOM_SEED))
+        ('svm', SVC(kernel='rbf', probability=True, random_state=RANDOM_SEED,
+                    class_weight='balanced'))
     ])
     svm_a.fit(Xa_train, ya_train)
     metrics = evaluate_svm(svm_a, Xa_test, ya_test)
@@ -149,7 +150,8 @@ def main():
     )
     svm_b = Pipeline([
         ('scaler', StandardScaler()),
-        ('svm', SVC(kernel='rbf', probability=True, random_state=RANDOM_SEED))
+        ('svm', SVC(kernel='rbf', probability=True, random_state=RANDOM_SEED,
+                    class_weight='balanced'))
     ])
     svm_b.fit(Xb_train, yb_train)
     metrics = evaluate_svm(svm_b, Xb_test, yb_test)
@@ -191,7 +193,8 @@ def main():
     print("\n[SVM] Baseline (bez adaptácie):")
     svm_cross = Pipeline([
         ('scaler', StandardScaler()),
-        ('svm', SVC(kernel='rbf', probability=True, random_state=RANDOM_SEED))
+        ('svm', SVC(kernel='rbf', probability=True, random_state=RANDOM_SEED,
+                    class_weight='balanced'))
     ])
     svm_cross.fit(X_oxford, y_oxford)
     metrics = evaluate_svm(svm_cross, X_istanbul, y_istanbul)

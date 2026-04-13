@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from config import NUM_FEATURES, NUM_CLASSES, HIDDEN_SIZE, FEATURE_DIM
+from config import NUM_FEATURES, NUM_CLASSES, HIDDEN_SIZE, FEATURE_DIM, DROPOUT_RATE
 
 
 # ========================================================================
@@ -28,18 +28,21 @@ class MLP(nn.Module):
     """
 
     def __init__(self, input_size=NUM_FEATURES, hidden_size=HIDDEN_SIZE,
-                 output_size=NUM_CLASSES):
+                 output_size=NUM_CLASSES, dropout=DROPOUT_RATE):
         super(MLP, self).__init__()
         # Vzor z Cvičenie 3: definícia vrstiev v __init__
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, hidden_size // 2)
         self.fc_output = nn.Linear(hidden_size // 2, output_size)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         # Vzor z Cvičenie 3-4: forward pass s ReLU aktiváciou
         # https://pytorch.org/docs/stable/generated/torch.nn.functional.relu.html
         x = F.relu(self.fc1(x))
+        x = self.dropout(x)
         x = F.relu(self.fc2(x))
+        x = self.dropout(x)
         x = self.fc_output(x)
         return x
 
@@ -59,7 +62,7 @@ class CNN1D(nn.Module):
     """
 
     def __init__(self, input_size=NUM_FEATURES, num_filters=16,
-                 output_size=NUM_CLASSES):
+                 output_size=NUM_CLASSES, dropout=DROPOUT_RATE):
         super(CNN1D, self).__init__()
 
         # Konvolučné bloky - vzor z Cvičenie 5: nn.Sequential
@@ -74,6 +77,7 @@ class CNN1D(nn.Module):
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2)
         )
+        self.dropout = nn.Dropout(dropout)
 
         # Po dvoch MaxPool(2): dĺžka = input_size // 4
         # Vzor z Cvičenie 5: x.view(x.size(0), -1) pre flatten
@@ -87,5 +91,6 @@ class CNN1D(nn.Module):
         x = self.conv2(x)
         # Flatten - vzor z Cvičenie 5
         x = x.view(x.size(0), -1)
+        x = self.dropout(x)
         x = self.fc_output(x)
         return x
