@@ -5,10 +5,7 @@ __pycache__/
 dist/
 build/
 
-# Jupyter
-.ipynb_checkpoints/
-
-# Data (downloaded datasets - generated automatically)
+# Data (stiahnuté datasety - generované automaticky)
 data/*.csv
 data/*.png
 

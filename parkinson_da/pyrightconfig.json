@@ -7,10 +7,7 @@
     "reportUnusedImport": "warning",
     "reportUnusedVariable": "warning",
     "reportUnusedFunction": "warning",
-    "include": ["parkinson_da"],
     "exclude": [
-        "parkinson_da/data/",
-        "Cviki/",
         "data/",
         "**/__pycache__",
         "**/node_modules",
