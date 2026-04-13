@@ -22,20 +22,20 @@ Oba datasety sú voľne dostupné z UCI ML Repository (CC BY 4.0):
 
 ## Klasifikátory
 
-| Model | Popis                                       | Cvicenie         |
-| ----- | ------------------------------------------- | ---------------- |
-| MLP   | Feed-forward siet (12→64→32→2)               | Cvicenie 4 - FF  |
-| CNN1D | 1D konvolucna siet                          | Cvicenie 5 - CNN |
-| SVM   | Support Vector Machine (scikit-learn)        | baseline         |
+| Model | Popis                                | Cvicenie         |
+| ----- | ------------------------------------ | ---------------- |
+| MLP   | Feed-forward siet (12→64→32→2)       | Cvicenie 4 - FF  |
+| CNN1D | 1D konvolucna siet                   | Cvicenie 5 - CNN |
+| SVM   | Support Vector Machine (scikit-learn) | baseline         |
 
 ## Domain Adaptation techniky
 
-| Technika | Popis                                   | Referencia                                                                    |
-| -------- | --------------------------------------- | ----------------------------------------------------------------------------- |
-| Baseline | Bez adaptacie (train A → test B)        | -                                                                             |
-| DANN     | Domain-Adversarial Neural Network       | [Ganin et al., 2015](https://arxiv.org/abs/1409.7495)                         |
-| MMD      | Maximum Mean Discrepancy                | [Gretton et al., 2012](https://jmlr.org/papers/v13/gretton12a.html)          |
-| CORAL    | CORrelation ALignment (TODO)            | [Sun & Saenko, 2016](https://arxiv.org/abs/1607.01719)                        |
+| Technika | Popis                             | Referencia                                                           |
+| -------- | --------------------------------- | -------------------------------------------------------------------- |
+| Baseline | Bez adaptacie (train A → test B)  | -                                                                    |
+| DANN     | Domain-Adversarial Neural Network | [Ganin et al., 2015](https://arxiv.org/abs/1409.7495)               |
+| MMD      | Maximum Mean Discrepancy          | [Gretton et al., 2012](https://jmlr.org/papers/v13/gretton12a.html) |
+| CORAL    | CORrelation ALignment (TODO)      | [Sun & Saenko, 2016](https://arxiv.org/abs/1607.01719)              |
 
 ## Inštalácia a spustenie
 
@@ -75,16 +75,16 @@ parkinson_da/
 
 ### Implementované (Týždeň 1-8)
 
-| Tyzden | Datum           | Uloha                                                | Cvicenie                |
-| ------ | --------------- | ---------------------------------------------------- | ----------------------- |
-| 1      | 16-22 Feb       | Setup projektu, download datasetov                   | Cv.1 - Tensory          |
-| 2      | 23 Feb - 1 Mar  | Dataset triedy, DataLoader, exploracia dat            | Cv.2 - Praca s datami   |
-| 3      | 2-8 Mar         | Standardizacia priznakov, nn.Module architektura      | Cv.3 - Komponenty NN    |
-| 4      | 9-15 Mar        | MLP klasifikator + trenovaci cyklus                  | Cv.4 - FF siete         |
-| 5      | 16-22 Mar       | CNN1D klasifikator                                   | Cv.5 - CNN              |
-| 6      | 23-28 Mar       | SVM baseline + in-domain evaluacia (F1, AUC)         | Cv.6 - LSTM             |
-| 7      | 30 Mar - 5 Apr  | DANN implementacia (GRL + adversarialne trenovanie)  | Projekt                 |
-| 8      | 6-12 Apr        | MMD implementacia + cross-domain baseline             | Projekt                 |
+| Tyzden | Datum          | Uloha                                               | Cvicenie              |
+| ------ | -------------- | --------------------------------------------------- | --------------------- |
+| 1      | 16-22 Feb      | Setup projektu, download datasetov                  | Cv.1 - Tensory        |
+| 2      | 23 Feb - 1 Mar | Dataset triedy, DataLoader, exploracia dat           | Cv.2 - Praca s datami |
+| 3      | 2-8 Mar        | Standardizacia priznakov, nn.Module architektura     | Cv.3 - Komponenty NN  |
+| 4      | 9-15 Mar       | MLP klasifikator + trenovaci cyklus                 | Cv.4 - FF siete       |
+| 5      | 16-22 Mar      | CNN1D klasifikator                                  | Cv.5 - CNN            |
+| 6      | 23-28 Mar      | SVM baseline + in-domain evaluacia (F1, AUC)        | Cv.6 - LSTM           |
+| 7      | 30 Mar - 5 Apr | DANN implementacia (GRL + adversarialne trenovanie) | Projekt               |
+| 8      | 6-12 Apr       | MMD implementacia + cross-domain baseline            | Projekt               |
 
 ### TODO (Týždeň 9-13)
 
@@ -113,10 +113,10 @@ parkinson_da/
    Parkinson's disease detection." Expert Systems with Applications.
 
 3. Ganin, Y. & Lempitsky, V. (2015). "Unsupervised Domain Adaptation by
-   Backpropagation." ICML 2015. https://arxiv.org/abs/1409.7495
+   Backpropagation." ICML 2015. <https://arxiv.org/abs/1409.7495>
 
 4. Gretton, A. et al. (2012). "A Kernel Two-Sample Test."
-   JMLR 13. https://jmlr.org/papers/v13/gretton12a.html
+   JMLR 13. <https://jmlr.org/papers/v13/gretton12a.html>
 
 5. Sun, B. & Saenko, K. (2016). "Deep CORAL: Correlation Alignment for
-   Deep Domain Adaptation." ECCV 2016. https://arxiv.org/abs/1607.01719
+   Deep Domain Adaptation." ECCV 2016. <https://arxiv.org/abs/1607.01719>
