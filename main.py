@@ -1,247 +1,279 @@
 """
-============================================================================
-HLAVNY VSTUPNY BOD PROJEKTU
-============================================================================
+Hlavný skript - spustenie celého experimentu.
 
-Porovnanie domain adaptation techník pre detekciu Parkinsonovej choroby z reči
-
-Tento skript je vstupny bod celeho projektu. Spustite ho pomocou:
+Použitie:
     python main.py
 
-Argumenty:
-    --model       Typ modelu: cnn, traditional, wav2vec (default: cnn)
-    --method      DA technika: baseline, dann, mmd, contrastive, multi_source, all
-    --source      Source domena: MDVR-KCL, ItalianPVS
-    --target      Target domena: MDVR-KCL, ItalianPVS
-    --epochs      Pocet epoch (default: 50)
-    --run-all     Spusti vsetky experimenty
+Vzor štruktúry: Cvičenie 4-5 (kompletný workflow)
+  imports → device → dáta → model → trénovanie → testovanie
 
-Priklady:
-    python main.py --model cnn --method baseline --source MDVR-KCL --target ItalianPVS
-    python main.py --model cnn --method dann --source ItalianPVS --target MDVR-KCL --epochs 30
-    python main.py --run-all --epochs 20
-
-Autori: Dmytro Protsun (dmytro.protsun@student.tuke.sk)
-        Mykyta Olym (mykyta.olym@student.tuke.sk)
-
-Predmet: INS
-Semestrálny projekt 2025/2026
-TUKE - Technická univerzita v Košiciach
-============================================================================
+Tento skript realizuje celý experiment:
+  Týždeň 1-2: Stiahnutie a príprava dát
+  Týždeň 3-5: Trénovanie klasifikátorov (MLP, CNN, SVM)
+  Týždeň 6:   In-domain evaluácia
+  Týždeň 7-8: Domain adaptácia (DANN, MMD) + cross-domain evaluácia
 """
 
-import argparse
-import sys
 import os
 import time
+from datetime import timedelta
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import train_test_split
 
-# Pridame korenoby priecinok do Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from config.settings import DOMAIN_NAMES, ADAPTATION_METHODS, MODEL_TYPES
-from experiments.run_all_experiments import ExperimentRunner
-from experiments.compare_results import ResultsComparator
-from utils.helpers import set_all_seeds, get_device, format_time
-
-
-def parse_arguments():
-    """
-    Parsuje argumenty z prikazoveho riadku.
-    Toto nam umoznuje spustat rozne experimenty bez zmeny kodu.
-    """
-    parser = argparse.ArgumentParser(
-        description="Porovnanie domain adaptation technik pre detekciu PD z reci"
-    )
-    
-    parser.add_argument(
-        "--model", type=str, default="cnn",
-        choices=["cnn", "traditional", "wav2vec"],
-        help="Typ modelu: cnn, traditional (MLP), wav2vec (default: cnn)"
-    )
-    
-    parser.add_argument(
-        "--method", type=str, default="baseline",
-        choices=["baseline", "dann", "mmd", "contrastive", "multi_source", "all"],
-        help="Domain adaptation technika (default: baseline)"
-    )
-    
-    parser.add_argument(
-        "--source", type=str, default="MDVR-KCL",
-        choices=DOMAIN_NAMES,
-        help="Source (zdrojova) domena"
-    )
-    
-    parser.add_argument(
-        "--target", type=str, default="ItalianPVS",
-        choices=DOMAIN_NAMES,
-        help="Target (cielova) domena"
-    )
-    
-    parser.add_argument(
-        "--epochs", type=int, default=50,
-        help="Pocet trenoavacich epoch (default: 50)"
-    )
-    
-    parser.add_argument(
-        "--run-all", action="store_true",
-        help="Spusti VSETKY experimenty (vsetky kombinacie)"
-    )
-    
-    parser.add_argument(
-        "--quick", action="store_true",
-        help="Rychly mod - menej epoch, len baseline a DANN (na testovanie)"
-    )
-    
-    parser.add_argument(
-        "--seed", type=int, default=42,
-        help="Random seed pre reprodukovatelnost (default: 42)"
-    )
-    
-    return parser.parse_args()
-
-
-def run_quick_test(device):
-    """
-    Rychly test na overenie ze vsetko funguje.
-    Spusti len par experimentov s malym poctom epoch.
-    Uzitocne na overenie ze kod sa niekde nesype.
-    """
-    print("\n" + "=" * 70)
-    print("  RYCHLY TEST (few epochs, basic experiments)")
-    print("=" * 70)
-    
-    runner = ExperimentRunner(
-        model_types=["cnn"],
-        da_methods=["baseline", "dann"],
-        domains=DOMAIN_NAMES,
-        device=device,
-    )
-    
-    # Spustime len jeden experiment
-    results = runner.run_single_experiment(
-        model_type="cnn",
-        da_method="baseline",
-        source_domain="MDVR-KCL",
-        target_domain="ItalianPVS",
-        num_epochs=5,
-    )
-    
-    if results is not None:
-        print("\n  Rychly test USPESNY!")
-    else:
-        print("\n  Rychly test prebehol (mozno chybaju data)")
-    
-    return results
-
-
-def run_single(args, device):
-    """
-    Spusti jeden experiment podla argumentov.
-    """
-    print(f"\n  Spustam experiment:")
-    print(f"    Model:  {args.model}")
-    print(f"    Metoda: {args.method}")
-    print(f"    Source: {args.source}")
-    print(f"    Target: {args.target}")
-    print(f"    Epochy: {args.epochs}")
-    
-    runner = ExperimentRunner(
-        model_types=[args.model],
-        da_methods=[args.method],
-        device=device,
-    )
-    
-    if args.method == "multi_source":
-        source_domains = [d for d in DOMAIN_NAMES if d != args.target]
-        results = runner.run_multi_source_experiment(
-            model_type=args.model,
-            source_domains=source_domains,
-            target_domain=args.target,
-            num_epochs=args.epochs,
-        )
-    else:
-        results = runner.run_single_experiment(
-            model_type=args.model,
-            da_method=args.method,
-            source_domain=args.source,
-            target_domain=args.target,
-            num_epochs=args.epochs,
-        )
-    
-    return results
-
-
-def run_all(args, device):
-    """
-    Spusti vsetky experimenty.
-    """
-    runner = ExperimentRunner(device=device)
-    
-    all_results = runner.run_all_experiments(num_epochs=args.epochs)
-    
-    # Porovnanie vysledkov
-    comparator = ResultsComparator(all_results)
-    comparator.summarize()
-    comparator.generate_latex_table(
-        output_path=os.path.join("results", "latex_table.tex")
-    )
-    
-    return all_results
+from config import DEVICE, DATA_DIR, RANDOM_SEED
+from download_data import download_datasets
+from datasets import load_domain, create_loaders, create_cross_domain_loaders
+from models import MLP, CNN1D
+from domain_adaptation import DANNModel, MMDModel
+from train import train_model, train_dann, train_mmd
+from evaluate import (evaluate_model, evaluate_svm,
+                      print_metrics, print_comparison_table)
+from utils import set_seed, plot_losses, plot_comparison
 
 
 def main():
-    """
-    Hlavna funkcia - vstupny bod programu.
-    """
-    # Vypis uvod
-    print("=" * 70)
-    print("  DETEKCIA PARKINSONOVEJ CHOROBY Z RECI")
-    print("  Porovnanie Domain Adaptation Technik")
-    print("  Autori: Dmytro Protsun, Mykyta Olym")
-    print("  TUKE 2025/2026")
-    print("=" * 70)
-    
-    # Parsujeme argumenty
-    args = parse_arguments()
-    
-    # Nastavime seed
-    set_all_seeds(args.seed)
-    
-    # Zistime zariadenie
-    device = get_device()
-    
-    # Zaciname merit cas
     start_time = time.time()
-    
-    # Co chceme spustit?
-    if args.quick:
-        # Rychly test
-        results = run_quick_test(device)
-    elif args.run_all:
-        # Vsetky experimenty
-        results = run_all(args, device)
-    elif args.method == "all":
-        # Vsetky DA metody pre dany model a domeny
-        runner = ExperimentRunner(
-            model_types=[args.model],
-            da_methods=ADAPTATION_METHODS,
-            device=device,
-        )
-        results = runner.run_all_experiments(num_epochs=args.epochs)
+
+    print("=" * 60)
+    print("SEMESTRÁLNY PROJEKT: Detekcia Parkinsonovej choroby z reči")
+    print("Domain Adaptation - porovnanie techník")
+    print("=" * 60)
+    print(f"Zariadenie: {DEVICE}")
+    print(f"Random seed: {RANDOM_SEED}")
+    set_seed(RANDOM_SEED)
+
+    # ==================================================================
+    # TÝŽDEŇ 1-2: Príprava dát
+    # Vzor: Cvičenie 1-2 (tensory, práca s dátami)
+    # ==================================================================
+    print("\n" + "=" * 60)
+    print("TÝŽDEŇ 1-2: Príprava dát")
+    print("=" * 60)
+
+    # Skontrolujeme, či už máme dáta stiahnuté
+    oxford_path = os.path.join(DATA_DIR, 'oxford.csv')
+    istanbul_path = os.path.join(DATA_DIR, 'istanbul.csv')
+
+    if not (os.path.exists(oxford_path) and os.path.exists(istanbul_path)):
+        print("Dáta nenájdené, sťahujem...")
+        download_datasets()
     else:
-        # Jeden konkretny experiment
-        results = run_single(args, device)
-    
-    # Celkovy cas
-    total_time = time.time() - start_time
-    
-    print(f"\n{'='*70}")
-    print(f"  HOTOVO! Celkovy cas: {format_time(total_time)}")
-    print(f"  Vysledky su v priecinku: results/")
-    print(f"  Modely su v priecinku: saved_models/")
-    print(f"{'='*70}")
+        print("Dáta už existujú, preskakujem sťahovanie.")
+
+    # Načítanie dát
+    X_oxford, y_oxford = load_domain('oxford')
+    X_istanbul, y_istanbul = load_domain('istanbul')
+    print(f"\nDomain A (Oxford):   {len(X_oxford)} vzoriek")
+    print(f"Domain B (Istanbul): {len(X_istanbul)} vzoriek")
+
+    # ==================================================================
+    # TÝŽDEŇ 3-5: Trénovanie klasifikátorov (in-domain)
+    # Vzor: Cvičenie 4-5 (MLP na MNIST, CNN na CIFAR10)
+    # ==================================================================
+    print("\n" + "=" * 60)
+    print("TÝŽDEŇ 3-6: In-domain trénovanie a evaluácia")
+    print("=" * 60)
+
+    results = {}
+    all_losses = {}
+
+    # ---- In-domain: Domain A (Oxford) ----
+    print("\n--- Domain A (Oxford) - In-domain ---")
+    train_loader_a, test_loader_a, scaler_a = create_loaders(X_oxford, y_oxford)
+
+    # MLP na Domain A
+    print("\n[MLP] Trénovanie na Domain A:")
+    mlp_a = MLP()
+    losses_mlp_a = train_model(mlp_a, train_loader_a)
+    metrics = evaluate_model(mlp_a, test_loader_a)
+    results['MLP in-domain A'] = metrics
+    all_losses['MLP (Domain A)'] = losses_mlp_a
+    print_metrics('MLP in-domain A', metrics)
+
+    # CNN na Domain A
+    print("\n[CNN] Trénovanie na Domain A:")
+    cnn_a = CNN1D()
+    losses_cnn_a = train_model(cnn_a, train_loader_a)
+    metrics = evaluate_model(cnn_a, test_loader_a)
+    results['CNN in-domain A'] = metrics
+    all_losses['CNN (Domain A)'] = losses_cnn_a
+    print_metrics('CNN in-domain A', metrics)
+
+    # SVM na Domain A
+    # https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
+    print("\n[SVM] Trénovanie na Domain A:")
+    Xa_train, Xa_test, ya_train, ya_test = train_test_split(
+        X_oxford, y_oxford, test_size=0.2,
+        random_state=RANDOM_SEED, stratify=y_oxford
+    )
+    svm_a = Pipeline([
+        ('scaler', StandardScaler()),
+        ('svm', SVC(kernel='rbf', probability=True, random_state=RANDOM_SEED))
+    ])
+    svm_a.fit(Xa_train, ya_train)
+    metrics = evaluate_svm(svm_a, Xa_test, ya_test)
+    results['SVM in-domain A'] = metrics
+    print_metrics('SVM in-domain A', metrics)
+
+    # ---- In-domain: Domain B (Istanbul) ----
+    print("\n--- Domain B (Istanbul) - In-domain ---")
+    train_loader_b, test_loader_b, scaler_b = create_loaders(
+        X_istanbul, y_istanbul
+    )
+
+    # MLP na Domain B
+    print("\n[MLP] Trénovanie na Domain B:")
+    mlp_b = MLP()
+    losses_mlp_b = train_model(mlp_b, train_loader_b)
+    metrics = evaluate_model(mlp_b, test_loader_b)
+    results['MLP in-domain B'] = metrics
+    all_losses['MLP (Domain B)'] = losses_mlp_b
+    print_metrics('MLP in-domain B', metrics)
+
+    # CNN na Domain B
+    print("\n[CNN] Trénovanie na Domain B:")
+    cnn_b = CNN1D()
+    losses_cnn_b = train_model(cnn_b, train_loader_b)
+    metrics = evaluate_model(cnn_b, test_loader_b)
+    results['CNN in-domain B'] = metrics
+    all_losses['CNN (Domain B)'] = losses_cnn_b
+    print_metrics('CNN in-domain B', metrics)
+
+    # SVM na Domain B
+    print("\n[SVM] Trénovanie na Domain B:")
+    Xb_train, Xb_test, yb_train, yb_test = train_test_split(
+        X_istanbul, y_istanbul, test_size=0.2,
+        random_state=RANDOM_SEED, stratify=y_istanbul
+    )
+    svm_b = Pipeline([
+        ('scaler', StandardScaler()),
+        ('svm', SVC(kernel='rbf', probability=True, random_state=RANDOM_SEED))
+    ])
+    svm_b.fit(Xb_train, yb_train)
+    metrics = evaluate_svm(svm_b, Xb_test, yb_test)
+    results['SVM in-domain B'] = metrics
+    print_metrics('SVM in-domain B', metrics)
+
+    # ==================================================================
+    # TÝŽDEŇ 7-8: Cross-domain evaluácia a Domain Adaptácia
+    # ==================================================================
+    print("\n" + "=" * 60)
+    print("TÝŽDEŇ 7-8: Cross-domain evaluácia + Domain Adaptation")
+    print("=" * 60)
+
+    # ---- Cross-domain BEZ adaptácie (baseline) ----
+    # Trénovanie na Domain A, testovanie na Domain B
+    print("\n--- Cross-domain: Train A → Test B (bez adaptácie) ---")
+
+    # Vytvoríme zdieľané loadery pre cross-domain experimenty
+    source_loader, target_loader, _ = create_cross_domain_loaders(
+        X_oxford, y_oxford, X_istanbul, y_istanbul
+    )
+
+    print("\n[MLP] Baseline (bez adaptácie):")
+    mlp_cross = MLP()
+    train_model(mlp_cross, source_loader)
+    metrics = evaluate_model(mlp_cross, target_loader)
+    results['MLP A→B (baseline)'] = metrics
+    print_metrics('MLP A→B baseline', metrics)
+
+    # CNN cross-domain
+    print("\n[CNN] Baseline (bez adaptácie):")
+    cnn_cross = CNN1D()
+    train_model(cnn_cross, source_loader)
+    metrics = evaluate_model(cnn_cross, target_loader)
+    results['CNN A→B (baseline)'] = metrics
+    print_metrics('CNN A→B baseline', metrics)
+
+    # SVM cross-domain
+    print("\n[SVM] Baseline (bez adaptácie):")
+    svm_cross = Pipeline([
+        ('scaler', StandardScaler()),
+        ('svm', SVC(kernel='rbf', probability=True, random_state=RANDOM_SEED))
+    ])
+    svm_cross.fit(X_oxford, y_oxford)
+    metrics = evaluate_svm(svm_cross, X_istanbul, y_istanbul)
+    results['SVM A→B (baseline)'] = metrics
+    print_metrics('SVM A→B baseline', metrics)
+
+    # ---- DANN ----
+    # Ref: Ganin et al. (2015), https://arxiv.org/abs/1409.7495
+    print("\n--- DANN: Domain-Adversarial Neural Network ---")
+    print("  Ref: Ganin & Lempitsky (2015)")
+
+    dann_model = DANNModel()
+    source_loader_dann, target_loader_dann, _ = create_cross_domain_loaders(
+        X_oxford, y_oxford, X_istanbul, y_istanbul
+    )
+    losses_dann = train_dann(dann_model, source_loader_dann, target_loader_dann)
+    all_losses['DANN'] = losses_dann
+    metrics = evaluate_model(dann_model, target_loader_dann, model_type='dann')
+    results['DANN A→B'] = metrics
+    print_metrics('DANN A→B', metrics)
+
+    # ---- MMD ----
+    # Ref: Gretton et al. (2012)
+    print("\n--- MMD: Maximum Mean Discrepancy ---")
+    print("  Ref: Gretton et al. (2012)")
+
+    mmd_model = MMDModel()
+    source_loader_mmd, target_loader_mmd, _ = create_cross_domain_loaders(
+        X_oxford, y_oxford, X_istanbul, y_istanbul
+    )
+    losses_mmd = train_mmd(mmd_model, source_loader_mmd, target_loader_mmd)
+    all_losses['MMD'] = losses_mmd
+    metrics = evaluate_model(mmd_model, target_loader_mmd, model_type='mmd')
+    results['MMD A→B'] = metrics
+    print_metrics('MMD A→B', metrics)
+
+    # ==================================================================
+    # Výsledky
+    # ==================================================================
+    print_comparison_table(results)
+
+    # Vizualizácia
+    print("\nVykresľujem grafy...")
+    plot_losses(all_losses, "Trénovacie straty",
+                save_path=os.path.join(DATA_DIR, 'losses.png'))
+    plot_comparison(results,
+                    save_path=os.path.join(DATA_DIR, 'comparison.png'))
+
+    elapsed = timedelta(seconds=time.time() - start_time)
+    print(f"\nCelkový čas: {elapsed}")
+
+    # ==================================================================
+    # TODO: Týždeň 9-13 (budúce práce)
+    # ==================================================================
+    print("\n" + "=" * 60)
+    print("TODO: Plán ďalších týždňov")
+    print("=" * 60)
+    print("""
+  Týždeň 9  (13-19 Apr): CORAL implementácia
+    - Deep CORAL (Sun & Saenko, 2016)
+    - Zarovnanie kovariančných matíc medzi doménami
+
+  Týždeň 10 (20-26 Apr): Multi-source domain adaptation
+    - Trénovanie na oboch doménach súčasne
+    - Váženie zdrojových domén
+
+  Týždeň 11 (27 Apr - 3 May): Kompletná evaluácia
+    - Oba smery: A→B aj B→A
+    - Štatistická významnosť (bootstrap)
+    - Analýza doménového posunu (t-SNE vizualizácia)
+
+  Týždeň 12 (4-10 May): Vizualizácia a analýza
+    - Porovnávacie tabuľky pre všetky kombinácie
+    - ROC krivky
+    - Analýza chýb (false positives/negatives)
+
+  Týždeň 13 (11-17 May): Záverečná správa a prezentácia
+    - Zhodnotenie najlepšej kombinácie klasifikátor + DA
+    - Odporúčania pre klinické nasadenie
+    - Príprava prezentácie
+    """)
 
 
-# Toto sa spusti ked zavolame: python main.py
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

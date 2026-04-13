@@ -1,17 +1,13 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
 *.egg-info/
 dist/
 build/
-*.egg
 
-# Virtual environments
-venv/
-env/
-.venv/
+# Data (stiahnuté datasety - generované automaticky)
+data/*.csv
+data/*.png
 
 # IDE
 .vscode/
@@ -19,19 +15,15 @@ env/
 *.swp
 *.swo
 
-# Datasety (prilis velke na Git)
-datasets/
-*.wav
-*.WAV
-*.xlsx
-
-# Vysledky a modely (generovane)
-results/
-saved_models/
-
 # OS
 .DS_Store
 Thumbs.db
 
-# Jupyter
-.ipynb_checkpoints/
+# Virtualenv
+venv/
+.venv/
+env/
+
+# Models
+saved_models/
+results/
