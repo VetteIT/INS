@@ -9,9 +9,11 @@ Evaluácia: Cvičenie 4 - with torch.no_grad(): ...
 
 import torch
 import torch.nn as nn
+import math
 from itertools import cycle
 
-from config import DEVICE, NUM_EPOCHS, LEARNING_RATE, MMD_LAMBDA, GRAD_CLIP_NORM, WEIGHT_DECAY
+from config import (DEVICE, NUM_EPOCHS, LEARNING_RATE, MMD_LAMBDA,
+                    GRAD_CLIP_NORM, WEIGHT_DECAY, DA_EPOCHS, DA_LR)
 
 
 # ========================================================================
@@ -80,7 +82,7 @@ def train_model(model, train_loader, num_epochs=NUM_EPOCHS, lr=LEARNING_RATE,
 # ========================================================================
 
 def train_dann(model, source_loader, target_loader,
-               num_epochs=NUM_EPOCHS, lr=LEARNING_RATE, class_weights=None):
+               num_epochs=DA_EPOCHS, lr=DA_LR, class_weights=None):
     """
     Trénovanie DANN - adversariálna domain adaptácia.
 
@@ -105,11 +107,11 @@ def train_dann(model, source_loader, target_loader,
         epoch_loss = 0.0
         n_batches = 0
 
-        # Progresívna lambda: lineárne zvyšovanie od 0 do max_lambda
-        # Pôvodný paper: λ_p = 2/(1+exp(-γ·p))-1, my použijeme lineárnu rampu
-        # pre jednoduchosť a stabilitu trénovania
+        # Sigmoidný schedule podľa Ganin et al. (2015):
+        # λ_p = 2 / (1 + exp(-γ·p)) - 1, kde p = epoch/epochs, γ = 10
+        # Saturuje okolo 70% trénovania → stabilný koniec
         progress = epoch / max(num_epochs - 1, 1)
-        current_lambda = max_lambda * progress
+        current_lambda = max_lambda * (2.0 / (1.0 + math.exp(-10.0 * progress)) - 1.0)
         model.grl.lambda_val = current_lambda
 
         # zip + cycle: iterujeme cez oba loadery súčasne
@@ -167,7 +169,7 @@ def train_dann(model, source_loader, target_loader,
 # ========================================================================
 
 def train_mmd(model, source_loader, target_loader,
-              num_epochs=NUM_EPOCHS, lr=LEARNING_RATE, mmd_lambda=MMD_LAMBDA,
+              num_epochs=DA_EPOCHS, lr=DA_LR, mmd_lambda=MMD_LAMBDA,
               class_weights=None):
     """
     Trénovanie s MMD stratou.

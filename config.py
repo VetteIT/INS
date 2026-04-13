@@ -23,6 +23,8 @@ DATA_DIR = os.path.join(PROJECT_DIR, 'data')
 BATCH_SIZE = 32
 LEARNING_RATE = 0.001
 NUM_EPOCHS = 50
+DA_EPOCHS = 100        # viac epoch pre domain adaptation (adversariálne trénovanie)
+DA_LR = 0.0005         # nižší learning rate pre stabilnejšie DA
 RANDOM_SEED = 42
 
 # ---- Veľkosti vrstiev ----

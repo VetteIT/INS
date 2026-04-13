@@ -36,3 +36,11 @@ known-first-party = ["config", "datasets", "models", "domain_adaptation",
 
 [tool.ruff.format]
 quote-style = "single"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+disallow_untyped_defs = false
+warn_unused_imports = true
+warn_redundant_casts = true
+warn_unused_configs = true

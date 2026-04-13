@@ -108,21 +108,22 @@ def create_loaders(X, y, test_size=0.2):
     return train_loader, test_loader, scaler
 
 
-def create_cross_domain_loaders(X_source, y_source, X_target, y_target, scaler=None):
+def create_cross_domain_loaders(X_source, y_source, X_target, y_target):
     """
-    Vytvorí loadery pre cross-domain evaluáciu.
+    Vytvorí loadery pre cross-domain experimenty.
     Trénovanie na celom zdrojovom datasete, testovanie na celom cieľovom.
 
-    Toto simuluje reálne nasadenie: model trénovaný v jednej nemocnici
-    sa nasadí v inej nemocnici bez prístupu k ich dátam.
-    """
-    if scaler is None:
-        scaler = StandardScaler()
-        X_source = scaler.fit_transform(X_source)
-    else:
-        X_source = scaler.transform(X_source)
+    DÔLEŽITÉ: Každá doména sa normalizuje NEZÁVISLE (vlastný scaler).
+    Toto je štandard v domain adaptation literatúre, pretože rôzne
+    nemocnice/datasety majú rôzne rozsahy meraní.
 
-    X_target = scaler.transform(X_target)
+    Ref: Ganin et al. (2015) - "features are standardized per domain"
+    """
+    # Normalizácia každej domény zvlášť
+    source_scaler = StandardScaler()
+    target_scaler = StandardScaler()
+    X_source = source_scaler.fit_transform(X_source)
+    X_target = target_scaler.fit_transform(X_target)
 
     source_dataset = ParkinsonDataset(X_source, y_source)
     target_dataset = ParkinsonDataset(X_target, y_target)
@@ -130,4 +131,4 @@ def create_cross_domain_loaders(X_source, y_source, X_target, y_target, scaler=N
     source_loader = DataLoader(source_dataset, batch_size=BATCH_SIZE, shuffle=True)
     target_loader = DataLoader(target_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-    return source_loader, target_loader, scaler
+    return source_loader, target_loader, source_scaler

@@ -39,13 +39,14 @@ def plot_losses(losses_dict, title="Trénovacie straty", save_path=None):
     axes[0].legend(fontsize=8)
     axes[0].grid(True, alpha=0.3)
 
-    # Pravý graf: orezaný rozsah Y (max 5) pre lepšiu čitateľnosť
+    # Pravý graf: priblíženie bez DA metód (iný rozsah strát)
+    da_keywords = ('DANN', 'MMD')
     for name, losses in losses_dict.items():
-        axes[1].plot(losses, label=name)
+        if not any(k in name for k in da_keywords):
+            axes[1].plot(losses, label=name)
     axes[1].set_xlabel('Epocha')
     axes[1].set_ylabel('Strata (Loss)')
-    axes[1].set_title(f'{title} (priblíženie)')
-    axes[1].set_ylim(0, 5)
+    axes[1].set_title(f'{title} (in-domain priblíženie)')
     axes[1].legend(fontsize=8)
     axes[1].grid(True, alpha=0.3)
 
