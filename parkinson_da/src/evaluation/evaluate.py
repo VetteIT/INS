@@ -14,9 +14,32 @@ https://scikit-learn.org/stable/modules/model_evaluation.html
 
 import numpy as np
 import torch
-from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    confusion_matrix,
+    f1_score,
+    roc_auc_score,
+    roc_curve,
+)
 
-from src.config import DEVICE
+from src.config import DEVICE, N_BOOTSTRAP
+
+
+def _model_forward(model, features, model_type):
+    """
+    Unifikovaný forward pass — vráti (class_logits, features_out).
+    'dann' a 'cdan' vracajú (logits, domain, feats) → extrakt prvý a tretí.
+    'mmd', 'coral', 'contrastive' vracajú (logits, feats).
+    'standard' vracia len logits → features_out = None.
+    """
+    if model_type in ('dann', 'cdan'):
+        logits, _, feats = model(features)
+    elif model_type in ('mmd', 'coral', 'contrastive'):
+        logits, feats = model(features)
+    else:
+        logits = model(features)
+        feats = None
+    return logits, feats
 
 
 def evaluate_model(model, test_loader, model_type='standard'):
@@ -45,12 +68,7 @@ def evaluate_model(model, test_loader, model_type='standard'):
             features = features.to(DEVICE)
 
             # Forward pass podľa typu modelu
-            if model_type == 'dann':
-                outputs, _, _ = model(features)
-            elif model_type == 'mmd':
-                outputs, _ = model(features)
-            else:
-                outputs = model(features)
+            outputs, _ = _model_forward(model, features, model_type)
 
             # Pravdepodobnosti a predikcie
             probs = torch.softmax(outputs, dim=1)
@@ -164,3 +182,145 @@ def print_comparison_table(results):
         print(row)
 
     print("=" * 75)
+
+
+# ========================================================================
+# ROC dáta pre vizualizáciu
+# ========================================================================
+
+def get_roc_data(model, test_loader, model_type='standard'):
+    """
+    Vráti (fpr, tpr, auc_score) pre vykreslenie ROC krivky.
+
+    Args:
+        model: natrénovaný PyTorch model
+        test_loader: DataLoader s testovacími dátami
+        model_type: 'standard' | 'dann' | 'mmd' | 'coral' | 'cdan' | 'contrastive'
+
+    Returns:
+        tuple (fpr, tpr, auc_score) — numpy polia
+    """
+    model = model.to(DEVICE)
+    model.eval()
+
+    all_labels = []
+    all_probs = []
+
+    with torch.no_grad():
+        for features, labels in test_loader:
+            features = features.to(DEVICE)
+            outputs, _ = _model_forward(model, features, model_type)
+            probs = torch.softmax(outputs, dim=1)[:, 1].cpu().numpy()
+            all_probs.extend(probs)
+            all_labels.extend(labels.numpy())
+
+    all_labels = np.array(all_labels)
+    all_probs = np.array(all_probs)
+
+    try:
+        fpr, tpr, _ = roc_curve(all_labels, all_probs)
+        auc_score = roc_auc_score(all_labels, all_probs)
+    except ValueError:
+        fpr, tpr, auc_score = np.array([0, 1]), np.array([0, 1]), 0.5
+
+    return fpr, tpr, auc_score
+
+
+# ========================================================================
+# Extrakcia príznakov pre t-SNE vizualizáciu
+# ========================================================================
+
+def extract_features(model, loader, model_type='standard'):
+    """
+    Extrahuje príznaky z feature_extractor vrstvy pre t-SNE vizualizáciu.
+
+    Returns:
+        (features_np, labels_np) — numpy polia
+    """
+    model = model.to(DEVICE)
+    model.eval()
+
+    all_features = []
+    all_labels = []
+
+    with torch.no_grad():
+        for features, labels in loader:
+            features = features.to(DEVICE)
+            _, feats = _model_forward(model, features, model_type)
+            if feats is not None:
+                all_features.append(feats.cpu().numpy())
+            all_labels.extend(labels.numpy())
+
+    if not all_features:
+        return None, np.array(all_labels)
+
+    return np.vstack(all_features), np.array(all_labels)
+
+
+# ========================================================================
+# Predikcie (y_true, y_score) — pre bootstrap a ďalšie analýzy
+# ========================================================================
+
+def get_predictions(model, loader, model_type='standard'):
+    """
+    Vráti (y_true, y_score) — skutočné labely a pravdepodobnosti pre PD triedu.
+    Použitie: bootstrap CI, vlastné analýzy.
+    """
+    model = model.to(DEVICE)
+    model.eval()
+    all_labels, all_probs = [], []
+
+    with torch.no_grad():
+        for features, labels in loader:
+            features = features.to(DEVICE)
+            outputs, _ = _model_forward(model, features, model_type)
+            probs = torch.softmax(outputs, dim=1)[:, 1].cpu().numpy()
+            all_probs.extend(probs)
+            all_labels.extend(labels.numpy())
+
+    return np.array(all_labels), np.array(all_probs)
+
+
+# ========================================================================
+# Bootstrap confidence interval pre AUC
+# ========================================================================
+
+def bootstrap_ci(y_true, y_score, n_bootstrap=N_BOOTSTRAP, alpha=0.95,
+                 random_state=42):
+    """
+    Bootstrap confidence interval pre AUC.
+
+    Args:
+        y_true: skutočné labely (0/1)
+        y_score: skóre pre pozitívnu triedu (pravdepodobnosť PD)
+        n_bootstrap: počet bootstrap iterácií
+        alpha: úroveň spoľahlivosti (0.95 → 95% CI)
+        random_state: seed pre reprodukovateľnosť
+
+    Returns:
+        (ci_low, ci_high): hranice intervalu spoľahlivosti
+    """
+    rng = np.random.RandomState(random_state)
+    n = len(y_true)
+    auc_scores = []
+
+    for _ in range(n_bootstrap):
+        idx = rng.randint(0, n, n)
+        y_true_b = y_true[idx]
+        y_score_b = y_score[idx]
+
+        if len(np.unique(y_true_b)) < 2:
+            continue
+
+        try:
+            auc_b = roc_auc_score(y_true_b, y_score_b)
+            auc_scores.append(auc_b)
+        except ValueError:
+            continue
+
+    if not auc_scores:
+        return 0.0, 0.0
+
+    lower = (1.0 - alpha) / 2.0
+    upper = 1.0 - lower
+    return float(np.quantile(auc_scores, lower)), float(np.quantile(auc_scores, upper))

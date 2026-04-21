@@ -14,6 +14,10 @@ import torch
 import torch.nn as nn
 
 from src.config import (
+    CONTRASTIVE_CONF,
+    CONTRASTIVE_LAMBDA,
+    CONTRASTIVE_TEMP,
+    CORAL_LAMBDA,
     DA_EPOCHS,
     DA_LR,
     DEVICE,
@@ -246,3 +250,245 @@ def train_mmd(model, source_loader, target_loader,
                   f'MMD: {mmd.item():.4f})')
 
     return losses
+
+
+# ========================================================================
+# Trénovanie s CORAL (Deep CORrelation ALignment)
+# Ref: Sun & Saenko (2016), https://arxiv.org/abs/1607.01719
+# Totožná slučka ako MMD, len strata nahradená coral_loss().
+# ========================================================================
+
+def train_coral(model, source_loader, target_loader,
+                num_epochs=DA_EPOCHS, lr=DA_LR, coral_lambda=CORAL_LAMBDA,
+                class_weights=None):
+    """
+    Trénovanie s CORAL stratou.
+    Klasifikačná strata + CORAL strata (Frobenius norma rozdielov kovariancií).
+    """
+    from src.models.domain_adaptation import coral_loss
+
+    model = model.to(DEVICE)
+    model.train()
+
+    weight = class_weights.to(DEVICE) if class_weights is not None else None
+    criterion = nn.CrossEntropyLoss(weight=weight)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
+
+    losses = []
+
+    for epoch in range(num_epochs):
+        epoch_loss = 0.0
+        n_batches = 0
+
+        for (src_x, src_y), (tgt_x, _) in zip(source_loader, cycle(target_loader)):
+            src_x = src_x.to(DEVICE)
+            src_y = src_y.to(DEVICE)
+            tgt_x = tgt_x.to(DEVICE)
+
+            src_output, src_features = model(src_x)
+            _, tgt_features = model(tgt_x)
+
+            class_loss = criterion(src_output, src_y)
+            c_loss = coral_loss(src_features, tgt_features)
+            loss = class_loss + coral_lambda * c_loss
+
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP_NORM)
+            optimizer.step()
+
+            epoch_loss += loss.item()
+            n_batches += 1
+
+        avg_loss = epoch_loss / max(n_batches, 1)
+        losses.append(avg_loss)
+
+        if (epoch + 1) % 10 == 0:
+            print(f'  Epoch [{epoch+1}/{num_epochs}], '
+                  f'Loss: {avg_loss:.4f} '
+                  f'(class: {class_loss.item():.4f}, '
+                  f'CORAL: {c_loss.item():.4f})')
+
+    return losses
+
+
+# ========================================================================
+# Trénovanie CDAN (Conditional Adversarial Domain Adaptation)
+# Ref: Long et al. (2018) NeurIPS, https://arxiv.org/abs/1705.10667
+# Rovnaká slučka ako DANN — CDANModel interne rieši multilineárnu podmienku.
+# ========================================================================
+
+def train_cdan(model, source_loader, target_loader,
+               num_epochs=DA_EPOCHS, lr=DA_LR, class_weights=None):
+    """
+    Trénovanie CDAN — class-conditional adversariálna DA.
+    Identická slučka ako train_dann(); multilineárne podmienkovanie
+    je transparentne implementované v CDANModel.forward().
+    """
+    model = model.to(DEVICE)
+    model.train()
+
+    weight = class_weights.to(DEVICE) if class_weights is not None else None
+    criterion = nn.CrossEntropyLoss(weight=weight)
+    domain_criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
+
+    scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer,
+        lr_lambda=lambda ep: 1.0 / (1.0 + 10.0 * ep / max(num_epochs - 1, 1)) ** 0.75
+    )
+
+    max_lambda = model.grl.lambda_val
+    losses = []
+
+    for epoch in range(num_epochs):
+        epoch_loss = 0.0
+        n_batches = 0
+
+        progress = epoch / max(num_epochs - 1, 1)
+        current_lambda = max_lambda * (2.0 / (1.0 + math.exp(-10.0 * progress)) - 1.0)
+        model.grl.lambda_val = current_lambda
+
+        for (src_x, src_y), (tgt_x, _) in zip(source_loader, cycle(target_loader)):
+            src_x = src_x.to(DEVICE)
+            src_y = src_y.to(DEVICE)
+            tgt_x = tgt_x.to(DEVICE)
+
+            src_class, src_domain, _ = model(src_x)
+            _, tgt_domain, _ = model(tgt_x)
+
+            class_loss = criterion(src_class, src_y)
+
+            src_domain_labels = torch.zeros(src_x.size(0), dtype=torch.long, device=DEVICE)
+            tgt_domain_labels = torch.ones(tgt_x.size(0), dtype=torch.long, device=DEVICE)
+            domain_loss = (domain_criterion(src_domain, src_domain_labels) +
+                           domain_criterion(tgt_domain, tgt_domain_labels))
+
+            loss = class_loss + domain_loss
+
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP_NORM)
+            optimizer.step()
+
+            epoch_loss += loss.item()
+            n_batches += 1
+
+        avg_loss = epoch_loss / max(n_batches, 1)
+        losses.append(avg_loss)
+        scheduler.step()
+
+        if (epoch + 1) % 10 == 0:
+            print(f'  Epoch [{epoch+1}/{num_epochs}], '
+                  f'Loss: {avg_loss:.4f} '
+                  f'(λ={current_lambda:.3f}, '
+                  f'class: {class_loss.item():.4f}, '
+                  f'domain: {domain_loss.item():.4f})')
+
+    return losses
+
+
+# ========================================================================
+# Trénovanie Contrastive DA
+# Ref: Yang et al. (2021) CVPR; He et al. (2020) MoCo
+#
+# Source: supervised cross-entropy
+# Target: prototype_contrastive_loss pre confident pseudo-labeled samples
+# ========================================================================
+
+def train_contrastive(model, source_loader, target_loader,
+                      num_epochs=DA_EPOCHS, lr=DA_LR,
+                      contrastive_lambda=CONTRASTIVE_LAMBDA,
+                      conf_threshold=CONTRASTIVE_CONF,
+                      temperature=CONTRASTIVE_TEMP,
+                      class_weights=None):
+    """
+    Trénovanie Contrastive DA — prototype alignment s pseudo-labelmi.
+
+    Pre každý target batch:
+      1. Zrazí softmax pravdepodobnosti → pseudo-labely
+      2. Odfiltruje nízko-konfidenčné vzorky (< conf_threshold)
+      3. Ak ostali ≥ 2 confident vzorky: vypočíta prototype_contrastive_loss
+    """
+    from src.models.domain_adaptation import prototype_contrastive_loss
+
+    model = model.to(DEVICE)
+    model.train()
+
+    weight = class_weights.to(DEVICE) if class_weights is not None else None
+    criterion = nn.CrossEntropyLoss(weight=weight)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
+
+    losses = []
+
+    for epoch in range(num_epochs):
+        epoch_loss = 0.0
+        n_batches = 0
+
+        for (src_x, src_y), (tgt_x, _) in zip(source_loader, cycle(target_loader)):
+            src_x = src_x.to(DEVICE)
+            src_y = src_y.to(DEVICE)
+            tgt_x = tgt_x.to(DEVICE)
+
+            # Source: supervised classification
+            src_output, src_features = model(src_x)
+            class_loss = criterion(src_output, src_y)
+
+            # Target: pseudo-labels via confidence thresholding
+            tgt_output, tgt_features = model(tgt_x)
+            tgt_probs = torch.softmax(tgt_output, dim=1)
+            tgt_conf, tgt_pseudo = tgt_probs.max(dim=1)
+
+            confident_mask = tgt_conf >= conf_threshold
+            loss = class_loss
+
+            if confident_mask.sum() >= 2:
+                conf_feats = tgt_features[confident_mask]
+                conf_pseudo = tgt_pseudo[confident_mask]
+                c_loss = prototype_contrastive_loss(
+                    src_features.detach(), src_y,
+                    conf_feats, conf_pseudo,
+                    temperature=temperature
+                )
+                loss = class_loss + contrastive_lambda * c_loss
+            else:
+                c_loss = torch.tensor(0.0)
+
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP_NORM)
+            optimizer.step()
+
+            epoch_loss += loss.item()
+            n_batches += 1
+
+        avg_loss = epoch_loss / max(n_batches, 1)
+        losses.append(avg_loss)
+
+        if (epoch + 1) % 10 == 0:
+            n_conf = confident_mask.sum().item()
+            print(f'  Epoch [{epoch+1}/{num_epochs}], '
+                  f'Loss: {avg_loss:.4f} '
+                  f'(class: {class_loss.item():.4f}, '
+                  f'contrastive: {c_loss.item():.4f}, '
+                  f'conf_samples: {n_conf})')
+
+    return losses
+
+
+# ========================================================================
+# Multi-source DANN
+# Loader z create_multisource_loaders() kombinuje viac zdrojových domén.
+# Trénovacia slučka je identická s train_dann().
+# ========================================================================
+
+def train_multisource_dann(model, source_loader, target_loader,
+                           num_epochs=DA_EPOCHS, lr=DA_LR,
+                           class_weights=None):
+    """
+    Multi-source DANN — zdrojový loader obsahuje spojené vzorky z viacerých domén.
+    Trénovacia logika je totožná s train_dann().
+    """
+    return train_dann(model, source_loader, target_loader,
+                      num_epochs=num_epochs, lr=lr,
+                      class_weights=class_weights)
