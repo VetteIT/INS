@@ -46,6 +46,7 @@ from src.data import (
     load_domain,
     patient_wise_loaders,
 )
+from src.data.datasets import compute_class_weights
 from src.evaluation import (
     bootstrap_ci,
     evaluate_model,
@@ -97,6 +98,14 @@ def run_da_experiment(model, train_fn, src_loader, tgt_loader, tgt_test_loader,
     results[name] = metrics
     print_metrics(name, metrics)
     return model
+
+
+def _src_class_weights(loader):
+    """Vytéžované váhy tried zo zdrojového loaderu (kompenzuje 75% PD v Oxforde)."""
+    ys = []
+    for _, y in loader:
+        ys.append(y.numpy())
+    return compute_class_weights(np.concatenate(ys))
 
 
 # ---------------------------------------------------------------------------
@@ -165,13 +174,14 @@ def main():
 
     print("\n[MLP] Doména A:")
     mlp_a = MLP(input_size=NUM_FEATURES)
-    all_losses['MLP (A)'] = train_model(mlp_a, tr_a)
+    cw_a = _src_class_weights(tr_a)
+    all_losses['MLP (A)'] = train_model(mlp_a, tr_a, class_weights=cw_a)
     results['MLP in-domain A'] = evaluate_model(mlp_a, te_a)
     print_metrics('MLP in-domain A', results['MLP in-domain A'])
 
     print("\n[CNN] Doména A:")
     cnn_a = CNN1D(input_size=NUM_FEATURES)
-    all_losses['CNN (A)'] = train_model(cnn_a, tr_a)
+    all_losses['CNN (A)'] = train_model(cnn_a, tr_a, class_weights=cw_a)
     results['CNN in-domain A'] = evaluate_model(cnn_a, te_a)
     print_metrics('CNN in-domain A', results['CNN in-domain A'])
 
@@ -233,7 +243,8 @@ def main():
 
     print("\n[MLP] A→B baseline:")
     mlp_ab = MLP(input_size=NUM_FEATURES)
-    all_losses['MLP (A→B)'] = train_model(mlp_ab, src_ab)
+    cw_ab = _src_class_weights(src_ab)
+    all_losses['MLP (A→B)'] = train_model(mlp_ab, src_ab, class_weights=cw_ab)
     results['MLP A→B (baseline)'] = evaluate_model(mlp_ab, tgt_ab_test)
     print_metrics('MLP A→B baseline', results['MLP A→B (baseline)'])
 
@@ -272,31 +283,36 @@ def main():
     dann_ab = DANNModel(input_size=NUM_FEATURES)
     sl, tl, te = fresh_ab()
     dann_ab = run_da_experiment(dann_ab, train_dann, sl, tl, te,
-                                'dann', 'DANN A→B', results, all_losses)
+                                'dann', 'DANN A→B', results, all_losses,
+                                train_kwargs={'class_weights': cw_ab})
 
     print("\n--- MMD (Gretton et al., 2012) ---")
     mmd_ab = MMDModel(input_size=NUM_FEATURES)
     sl, tl, te = fresh_ab()
     mmd_ab = run_da_experiment(mmd_ab, train_mmd, sl, tl, te,
-                               'mmd', 'MMD A→B', results, all_losses)
+                               'mmd', 'MMD A→B', results, all_losses,
+                               train_kwargs={'class_weights': cw_ab})
 
     print("\n--- CORAL (Sun & Saenko, 2016) ---")
     coral_ab = CORALModel(input_size=NUM_FEATURES)
     sl, tl, te = fresh_ab()
     coral_ab = run_da_experiment(coral_ab, train_coral, sl, tl, te,
-                                 'coral', 'CORAL A→B', results, all_losses)
+                                 'coral', 'CORAL A→B', results, all_losses,
+                                 train_kwargs={'class_weights': cw_ab})
 
     print("\n--- CDAN (Long et al., 2018) ---")
     cdan_ab = CDANModel(input_size=NUM_FEATURES)
     sl, tl, te = fresh_ab()
     cdan_ab = run_da_experiment(cdan_ab, train_cdan, sl, tl, te,
-                                'cdan', 'CDAN A→B', results, all_losses)
+                                'cdan', 'CDAN A→B', results, all_losses,
+                                train_kwargs={'class_weights': cw_ab})
 
     print("\n--- Contrastive DA (Yang et al., 2021) ---")
     cont_ab = ContrastiveDAModel(input_size=NUM_FEATURES)
     sl, tl, te = fresh_ab()
     cont_ab = run_da_experiment(cont_ab, train_contrastive, sl, tl, te,
-                                'contrastive', 'Contrastive A→B', results, all_losses)
+                                'contrastive', 'Contrastive A→B', results, all_losses,
+                                train_kwargs={'class_weights': cw_ab})
 
     # ======================================================================
     # 5. MULTI-SOURCE DA — (B+C)→D

@@ -9,6 +9,7 @@ from .domain_adaptation import (
     prototype_contrastive_loss,
 )
 from .models import CNN1D, MLP
+from .subspace_alignment import SubspaceAlignmentDA
 
 __all__ = [
     "CDANModel",
@@ -18,6 +19,7 @@ __all__ = [
     "DANNModel",
     "MLP",
     "MMDModel",
+    "SubspaceAlignmentDA",
     "coral_loss",
     "mmd_loss",
     "prototype_contrastive_loss",

@@ -1,0 +1,355 @@
+======================================================================
+SEMESTR├üLNY PROJEKT: Detekcia Parkinsonovej choroby z re─ìi
+Domain Adaptation ΓÇö komplexn├⌐ porovnanie techn├¡k
+======================================================================
+Zariadenie: cuda
+
+======================================================================
+1. PR├ìPRAVA D├üT
+======================================================================
+Ch├╜baj├║ce s├║bory: ['oxford.csv', 'istanbul.csv', 'istanbul_r1.csv', 'istanbul_r2.csv', 'istanbul_r3.csv']
+============================================================
+Stahovanie datasetov z UCI ML Repository
+============================================================
+[Domain A] Oxford Parkinson's Dataset (Little et al., 2008)
+  Pocet vzoriek: 195
+  Pocet pacientov: 32
+  PD: 147, Healthy: 48
+
+[Domain B/C/D] Istanbul Replicated Features (Naranjo et al., 2016)
+  3 recording sessions ΓåÆ 3 separate domains
+  Celkovo vzoriek: 240
+  Pocet pacientov: 80
+  Rozsirene priznaky: 32 (MFCC, Delta, GNE, multi-HNR)
+  istanbul_r1: 80 vzoriek (PD=40, Healthy=40)
+  istanbul_r2: 80 vzoriek (PD=40, Healthy=40)
+  istanbul_r3: 80 vzoriek (PD=40, Healthy=40)
+
+Data ulozene do: C:\INS-Dmytro\parkinson_da\data/
+  oxford.csv        (195 vzoriek)
+  istanbul_r1.csv  (80 vzoriek)
+  istanbul_r2.csv  (80 vzoriek)
+  istanbul_r3.csv  (80 vzoriek)
+  istanbul.csv  (240 vzoriek)
+
+Dom├⌐na A (Oxford):       195 vzoriek, 32 pacientov
+Dom├⌐na B (Istanbul R1):   80 vzoriek, 80 pacientov
+Dom├⌐na C (Istanbul R2):   80 vzoriek
+Dom├⌐na D (Istanbul R3):   80 vzoriek
+
+======================================================================
+2. IN-DOMAIN EXPERIMENTY
+======================================================================
+
+--- Dom├⌐na A (Oxford) ΓÇö patient-wise split ---
+
+[MLP] Dom├⌐na A:
+  Epoch [10/50], Loss: 0.4039
+  Epoch [20/50], Loss: 0.3258
+  Epoch [30/50], Loss: 0.2350
+  Epoch [40/50], Loss: 0.1910
+  Epoch [50/50], Loss: 0.1444
+  MLP in-domain A:
+    Accuracy:    0.796
+    F1:          0.881
+    AUC:         0.905
+    Senzitivita: 1.000
+    ┼ápecificita: 0.167
+
+[CNN] Dom├⌐na A:
+  Epoch [10/50], Loss: 0.4732
+  Epoch [20/50], Loss: 0.4036
+  Epoch [30/50], Loss: 0.3847
+  Epoch [40/50], Loss: 0.3075
+  Epoch [50/50], Loss: 0.2497
+  CNN in-domain A:
+    Accuracy:    0.816
+    F1:          0.892
+    AUC:         0.948
+    Senzitivita: 1.000
+    ┼ápecificita: 0.250
+
+[SVM] Dom├⌐na A (patient-wise):
+  SVM in-domain A:
+    Accuracy:    0.571
+    F1:          0.687
+    AUC:         0.511
+    Senzitivita: 0.622
+    ┼ápecificita: 0.417
+
+--- Dom├⌐na B (Istanbul R1) ---
+
+[MLP] Dom├⌐na B:
+  Epoch [10/50], Loss: 0.5931
+  Epoch [20/50], Loss: 0.4739
+  Epoch [30/50], Loss: 0.3679
+  Epoch [40/50], Loss: 0.3311
+  Epoch [50/50], Loss: 0.3099
+  MLP in-domain B:
+    Accuracy:    0.688
+    F1:          0.667
+    AUC:         0.750
+    Senzitivita: 0.625
+    ┼ápecificita: 0.750
+
+[SVM] Dom├⌐na B:
+  SVM in-domain B:
+    Accuracy:    0.688
+    F1:          0.667
+    AUC:         0.734
+    Senzitivita: 0.625
+    ┼ápecificita: 0.750
+
+--- Dom├⌐na D (Istanbul R3) ---
+
+[MLP] Dom├⌐na D:
+  Epoch [10/50], Loss: 0.5559
+  Epoch [20/50], Loss: 0.4757
+  Epoch [30/50], Loss: 0.3927
+  Epoch [40/50], Loss: 0.3695
+  Epoch [50/50], Loss: 0.3466
+  MLP in-domain D:
+    Accuracy:    0.688
+    F1:          0.667
+    AUC:         0.641
+    Senzitivita: 0.625
+    ┼ápecificita: 0.750
+
+======================================================================
+3. CROSS-DOMAIN BASELINE (bez adapt├ície)
+======================================================================
+
+--- AΓåÆB baseline ---
+
+[MLP] AΓåÆB baseline:
+  Epoch [10/50], Loss: 0.4098
+  Epoch [20/50], Loss: 0.3600
+  Epoch [30/50], Loss: 0.3022
+  Epoch [40/50], Loss: 0.2562
+  Epoch [50/50], Loss: 0.2353
+  MLP AΓåÆB baseline:
+    Accuracy:    0.500
+    F1:          0.600
+    AUC:         0.564
+    Senzitivita: 0.750
+    ┼ápecificita: 0.250
+
+[SVM] AΓåÆB baseline:
+  SVM AΓåÆB baseline:
+    Accuracy:    0.475
+    F1:          0.543
+    AUC:         0.523
+    Senzitivita: 0.625
+    ┼ápecificita: 0.325
+
+--- BΓåÆA baseline ---
+  Epoch [10/50], Loss: 0.6296
+  Epoch [20/50], Loss: 0.5469
+  Epoch [30/50], Loss: 0.5060
+  Epoch [40/50], Loss: 0.4315
+  Epoch [50/50], Loss: 0.4161
+  MLP BΓåÆA baseline:
+    Accuracy:    0.574
+    F1:          0.641
+    AUC:         0.733
+    Senzitivita: 0.503
+    ┼ápecificita: 0.792
+
+======================================================================
+4. DOMAIN ADAPTATION ΓÇö AΓåÆB (Oxford ΓåÆ Istanbul R1)
+======================================================================
+
+--- DANN (Ganin & Lempitsky, 2015) ---
+  Epoch [10/100], Loss: 1.8076 (╬╗=0.213, lr=0.000296, class: 0.4168, domain: 1.3696)
+  Epoch [20/100], Loss: 1.7842 (╬╗=0.372, lr=0.000218, class: 0.4307, domain: 1.3759)
+  Epoch [30/100], Loss: 1.7398 (╬╗=0.449, lr=0.000176, class: 0.3634, domain: 1.3752)
+  Epoch [40/100], Loss: 1.7105 (╬╗=0.481, lr=0.000149, class: 0.2957, domain: 1.3881)
+  Epoch [50/100], Loss: 1.7279 (╬╗=0.493, lr=0.000130, class: 0.3366, domain: 1.3858)
+  Epoch [60/100], Loss: 1.7061 (╬╗=0.497, lr=0.000115, class: 0.3038, domain: 1.3924)
+  Epoch [70/100], Loss: 1.6939 (╬╗=0.499, lr=0.000104, class: 0.3859, domain: 1.3968)
+  Epoch [80/100], Loss: 1.6898 (╬╗=0.500, lr=0.000096, class: 0.3201, domain: 1.4007)
+  Epoch [90/100], Loss: 1.6572 (╬╗=0.500, lr=0.000088, class: 0.2520, domain: 1.3802)
+  Epoch [100/100], Loss: 1.6728 (╬╗=0.500, lr=0.000082, class: 0.2618, domain: 1.3687)
+  DANN AΓåÆB:
+    Accuracy:    0.500
+    F1:          0.600
+    AUC:         0.594
+    Senzitivita: 0.750
+    ┼ápecificita: 0.250
+
+--- MMD (Gretton et al., 2012) ---
+  Epoch [10/100], Loss: 0.4810 (class: 0.4921, MMD: 0.0440)
+  Epoch [20/100], Loss: 0.3927 (class: 0.3837, MMD: 0.0474)
+  Epoch [30/100], Loss: 0.3314 (class: 0.2871, MMD: 0.0425)
+  Epoch [40/100], Loss: 0.2840 (class: 0.2720, MMD: 0.0438)
+  Epoch [50/100], Loss: 0.2614 (class: 0.2758, MMD: 0.0402)
+  Epoch [60/100], Loss: 0.2337 (class: 0.1581, MMD: 0.0296)
+  Epoch [70/100], Loss: 0.2217 (class: 0.1683, MMD: 0.0376)
+  Epoch [80/100], Loss: 0.1871 (class: 0.1898, MMD: 0.0347)
+  Epoch [90/100], Loss: 0.1979 (class: 0.2493, MMD: 0.0464)
+  Epoch [100/100], Loss: 0.1881 (class: 0.2278, MMD: 0.0339)
+  MMD AΓåÆB:
+    Accuracy:    0.475
+    F1:          0.580
+    AUC:         0.566
+    Senzitivita: 0.725
+    ┼ápecificita: 0.225
+
+--- CORAL (Sun & Saenko, 2016) ---
+  Epoch [10/100], Loss: 0.4545 (class: 0.4580, CORAL: 0.0026)
+  Epoch [20/100], Loss: 0.3542 (class: 0.3677, CORAL: 0.0020)
+  Epoch [30/100], Loss: 0.3245 (class: 0.2856, CORAL: 0.0015)
+  Epoch [40/100], Loss: 0.2789 (class: 0.2532, CORAL: 0.0011)
+  Epoch [50/100], Loss: 0.2301 (class: 0.2253, CORAL: 0.0016)
+  Epoch [60/100], Loss: 0.2303 (class: 0.2859, CORAL: 0.0019)
+  Epoch [70/100], Loss: 0.2153 (class: 0.2067, CORAL: 0.0014)
+  Epoch [80/100], Loss: 0.1849 (class: 0.1507, CORAL: 0.0016)
+  Epoch [90/100], Loss: 0.1678 (class: 0.1636, CORAL: 0.0017)
+  Epoch [100/100], Loss: 0.1464 (class: 0.1554, CORAL: 0.0016)
+  CORAL AΓåÆB:
+    Accuracy:    0.475
+    F1:          0.571
+    AUC:         0.610
+    Senzitivita: 0.700
+    ┼ápecificita: 0.250
+
+--- CDAN (Long et al., 2018) ---
+  Epoch [10/100], Loss: 1.8377 (╬╗=0.213, class: 0.4638, domain: 1.3789)
+  Epoch [20/100], Loss: 1.7641 (╬╗=0.372, class: 0.3657, domain: 1.3590)
+  Epoch [30/100], Loss: 1.7203 (╬╗=0.449, class: 0.3768, domain: 1.3729)
+  Epoch [40/100], Loss: 1.6989 (╬╗=0.481, class: 0.3166, domain: 1.3576)
+  Epoch [50/100], Loss: 1.6973 (╬╗=0.493, class: 0.3086, domain: 1.3673)
+  Epoch [60/100], Loss: 1.6941 (╬╗=0.497, class: 0.3347, domain: 1.3623)
+  Epoch [70/100], Loss: 1.6539 (╬╗=0.499, class: 0.2734, domain: 1.3589)
+  Epoch [80/100], Loss: 1.6586 (╬╗=0.500, class: 0.2725, domain: 1.3697)
+  Epoch [90/100], Loss: 1.6611 (╬╗=0.500, class: 0.2745, domain: 1.3587)
+  Epoch [100/100], Loss: 1.6621 (╬╗=0.500, class: 0.2607, domain: 1.3542)
+  CDAN AΓåÆB:
+    Accuracy:    0.487
+    F1:          0.577
+    AUC:         0.575
+    Senzitivita: 0.700
+    ┼ápecificita: 0.275
+
+--- Contrastive DA (Yang et al., 2021) ---
+  Epoch [10/100], Loss: 0.4400 (class: 0.3932, contrastive: 0.0072, conf_samples: 19)
+  Epoch [20/100], Loss: 0.3465 (class: 0.3023, contrastive: 0.0131, conf_samples: 36)
+  Epoch [30/100], Loss: 0.2852 (class: 0.2832, contrastive: 0.0284, conf_samples: 46)
+  Epoch [40/100], Loss: 0.2925 (class: 0.3241, contrastive: 0.0468, conf_samples: 51)
+  Epoch [50/100], Loss: 0.2625 (class: 0.1978, contrastive: 0.0303, conf_samples: 53)
+  Epoch [60/100], Loss: 0.2171 (class: 0.1612, contrastive: 0.0291, conf_samples: 55)
+  Epoch [70/100], Loss: 0.1895 (class: 0.1659, contrastive: 0.0321, conf_samples: 53)
+  Epoch [80/100], Loss: 0.1885 (class: 0.1814, contrastive: 0.0236, conf_samples: 51)
+  Epoch [90/100], Loss: 0.2010 (class: 0.2018, contrastive: 0.0874, conf_samples: 57)
+  Epoch [100/100], Loss: 0.1787 (class: 0.1474, contrastive: 0.0115, conf_samples: 54)
+  Contrastive AΓåÆB:
+    Accuracy:    0.537
+    F1:          0.648
+    AUC:         0.639
+    Senzitivita: 0.850
+    ┼ápecificita: 0.225
+
+======================================================================
+5. MULTI-SOURCE DA ΓÇö (B+C)ΓåÆD
+======================================================================
+
+--- Multi-source DANN (B+C)ΓåÆD ---
+  Epoch [10/100], Loss: 2.4894 (╬╗=0.213, lr=0.000296, class: 0.5915, domain: 1.9207)
+  Epoch [20/100], Loss: 2.2968 (╬╗=0.372, lr=0.000218, class: 0.5246, domain: 1.7818)
+  Epoch [30/100], Loss: 2.1511 (╬╗=0.449, lr=0.000176, class: 0.4786, domain: 1.6432)
+  Epoch [40/100], Loss: 2.0675 (╬╗=0.481, lr=0.000149, class: 0.4528, domain: 1.6162)
+  Epoch [50/100], Loss: 2.0716 (╬╗=0.493, lr=0.000130, class: 0.5251, domain: 1.6002)
+  Epoch [60/100], Loss: 2.0443 (╬╗=0.497, lr=0.000115, class: 0.4565, domain: 1.5932)
+  Epoch [70/100], Loss: 2.0335 (╬╗=0.499, lr=0.000104, class: 0.4181, domain: 1.5939)
+  Epoch [80/100], Loss: 2.0461 (╬╗=0.500, lr=0.000096, class: 0.4635, domain: 1.6105)
+  Epoch [90/100], Loss: 2.0309 (╬╗=0.500, lr=0.000088, class: 0.4165, domain: 1.5764)
+  Epoch [100/100], Loss: 2.0023 (╬╗=0.500, lr=0.000082, class: 0.4574, domain: 1.5607)
+  Multi-DANN (B+C)ΓåÆD:
+    Accuracy:    0.750
+    F1:          0.730
+    AUC:         0.842
+    Senzitivita: 0.675
+    ┼ápecificita: 0.825
+
+--- Multi-source CORAL (B+C)ΓåÆD ---
+  Epoch [10/100], Loss: 0.5316 (class: 0.5428, CORAL: 0.0031)
+  Epoch [20/100], Loss: 0.4681 (class: 0.4876, CORAL: 0.0015)
+  Epoch [30/100], Loss: 0.4816 (class: 0.4746, CORAL: 0.0013)
+  Epoch [40/100], Loss: 0.4039 (class: 0.4062, CORAL: 0.0013)
+  Epoch [50/100], Loss: 0.3883 (class: 0.3869, CORAL: 0.0019)
+  Epoch [60/100], Loss: 0.3738 (class: 0.3740, CORAL: 0.0016)
+  Epoch [70/100], Loss: 0.3785 (class: 0.3365, CORAL: 0.0017)
+  Epoch [80/100], Loss: 0.3789 (class: 0.4508, CORAL: 0.0018)
+  Epoch [90/100], Loss: 0.3392 (class: 0.3711, CORAL: 0.0010)
+  Epoch [100/100], Loss: 0.3728 (class: 0.3844, CORAL: 0.0019)
+  Multi-CORAL (B+C)ΓåÆD:
+    Accuracy:    0.775
+    F1:          0.757
+    AUC:         0.852
+    Senzitivita: 0.700
+    ┼ápecificita: 0.850
+
+======================================================================
+6. ROC KRIVKY ΓÇö AΓåÆB
+======================================================================
+  MLP (baseline)      : AUC = 0.564
+  DANN                : AUC = 0.594
+  MMD                 : AUC = 0.566
+  CORAL               : AUC = 0.610
+  CDAN                : AUC = 0.575
+  Contrastive         : AUC = 0.639
+  Graf ulo┼╛en├╜: C:\INS-Dmytro\parkinson_da\data\roc_curves_AtoB.png
+
+======================================================================
+7. t-SNE ΓÇö pred a po DANN (AΓåÆB)
+======================================================================
+  Graf ulo┼╛en├╜: C:\INS-Dmytro\parkinson_da\data\tsne_dann.png
+
+======================================================================
+8. BOOTSTRAP 95% CI ΓÇö AUC pre AΓåÆB
+======================================================================
+
+  Met├│da                    AUC           95% CI
+  ----------------------------------------------
+  MLP (baseline)          0.564  [0.432, 0.698]
+  DANN                    0.594  [0.467, 0.725]
+  MMD                     0.566  [0.432, 0.704]
+  CORAL                   0.610  [0.479, 0.740]
+  CDAN                    0.575  [0.440, 0.704]
+  Contrastive             0.639  [0.517, 0.768]
+
+======================================================================
+9. PERFORMANCE DROP ΓÇö domain gap
+======================================================================
+  Graf ulo┼╛en├╜: C:\INS-Dmytro\parkinson_da\data\performance_drop.png
+
+======================================================================
+10. Z├üVERE─îN├ü POROVN├üVACIA TABU─╜KA
+======================================================================
+
+===========================================================================
+POROVNANIE V├¥SLEDKOV
+===========================================================================
+Met├│da                            Acc     F1    AUC   Sens   Spec
+---------------------------------------------------------------------------
+MLP in-domain A                 0.796  0.881  0.905  1.000  0.167
+CNN in-domain A                 0.816  0.892  0.948  1.000  0.250
+SVM in-domain A                 0.571  0.687  0.511  0.622  0.417
+MLP in-domain B                 0.688  0.667  0.750  0.625  0.750
+SVM in-domain B                 0.688  0.667  0.734  0.625  0.750
+MLP in-domain D                 0.688  0.667  0.641  0.625  0.750
+MLP AΓåÆB (baseline)              0.500  0.600  0.564  0.750  0.250
+SVM AΓåÆB (baseline)              0.475  0.543  0.523  0.625  0.325
+MLP BΓåÆA (baseline)              0.574  0.641  0.733  0.503  0.792
+DANN AΓåÆB                        0.500  0.600  0.594  0.750  0.250
+MMD AΓåÆB                         0.475  0.580  0.566  0.725  0.225
+CORAL AΓåÆB                       0.475  0.571  0.610  0.700  0.250
+CDAN AΓåÆB                        0.487  0.577  0.575  0.700  0.275
+Contrastive AΓåÆB                 0.537  0.648  0.639  0.850  0.225
+Multi-DANN (B+C)ΓåÆD              0.750  0.730  0.842  0.675  0.825
+Multi-CORAL (B+C)ΓåÆD             0.775  0.757  0.852  0.700  0.850
+===========================================================================
+  Graf ulo┼╛en├╜: C:\INS-Dmytro\parkinson_da\data\losses_da.png
+
+Celkov├╜ ─ìas: 0:00:50
+Grafy ulo┼╛en├⌐ v: C:\INS-Dmytro\parkinson_da\data

@@ -324,3 +324,57 @@ def bootstrap_ci(y_true, y_score, n_bootstrap=N_BOOTSTRAP, alpha=0.95,
     lower = (1.0 - alpha) / 2.0
     upper = 1.0 - lower
     return float(np.quantile(auc_scores, lower)), float(np.quantile(auc_scores, upper))
+
+
+# ========================================================================
+# Paired bootstrap pre rozdiel AUC (Δ = method - baseline)
+#
+# Toto je SPRÁVNY štatistický test pre porovnanie dvoch klasifikátorov
+# na rovnakom testovacom sete. Bootstrap nezávisle nadhodnocuje variance,
+# pretože ignoruje koreláciu medzi predikciami modelov na tých istých
+# vzorkách. Paired bootstrap používa rovnaké indexy pre obe metódy
+# v každej iterácii → CI na Δ je výrazne tesnejší.
+#
+# Ref: Hanley & McNeil (1983), DeLong et al. (1988); paired bootstrap je
+# distribution-free alternatíva s totožnými asymptotickými vlastnosťami.
+# ========================================================================
+
+def paired_bootstrap_diff(y_true, y_score_a, y_score_b,
+                          n_bootstrap=N_BOOTSTRAP, alpha=0.95,
+                          random_state=42):
+    """Paired bootstrap CI pre Δ AUC = AUC(b) - AUC(a) na rovnakom test sete.
+
+    Returns (delta_point, ci_low, ci_high, p_value_two_sided).
+    p-value: podiel bootstrap iterácií, kde Δ má opačné znamienko ako bod
+    odhad — empirická one-sided pravdepodobnosť, zdvojnásobená pre two-sided.
+    """
+    rng = np.random.RandomState(random_state)
+    n = len(y_true)
+    delta_point = roc_auc_score(y_true, y_score_b) - roc_auc_score(y_true, y_score_a)
+
+    diffs = []
+    for _ in range(n_bootstrap):
+        idx = rng.randint(0, n, n)
+        yt = y_true[idx]
+        if len(np.unique(yt)) < 2:
+            continue
+        try:
+            d = (roc_auc_score(yt, y_score_b[idx]) -
+                 roc_auc_score(yt, y_score_a[idx]))
+            diffs.append(d)
+        except ValueError:
+            continue
+
+    if not diffs:
+        return float(delta_point), 0.0, 0.0, 1.0
+
+    diffs_arr = np.asarray(diffs)
+    lower = (1.0 - alpha) / 2.0
+    upper = 1.0 - lower
+    ci_low = float(np.quantile(diffs_arr, lower))
+    ci_high = float(np.quantile(diffs_arr, upper))
+
+    # Empirická p-value (two-sided, na centrovaných rozdieloch)
+    centered = diffs_arr - diffs_arr.mean()
+    p_two = float(np.mean(np.abs(centered) >= np.abs(delta_point)))
+    return float(delta_point), ci_low, ci_high, p_two

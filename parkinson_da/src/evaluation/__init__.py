@@ -5,6 +5,7 @@ from .evaluate import (
     extract_features,
     get_predictions,
     get_roc_data,
+    paired_bootstrap_diff,
     print_comparison_table,
     print_metrics,
 )
@@ -16,6 +17,7 @@ __all__ = [
     "extract_features",
     "get_predictions",
     "get_roc_data",
+    "paired_bootstrap_diff",
     "print_comparison_table",
     "print_metrics",
 ]

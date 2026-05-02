@@ -141,17 +141,21 @@ def train_dann(model, source_loader, target_loader,
             src_y = src_y.to(DEVICE)
             tgt_x = tgt_x.to(DEVICE)
 
-            # Forward pass
-            src_class, src_domain, _ = model(src_x)
-            _, tgt_domain, _ = model(tgt_x)
+            # Konkatenovaný forward: BatchNorm vidí obe domény v jednej dávke
+            # → statistiky sa počítajú zo zmiešanej distribúcie (krízovým AdaBN-style).
+            n_s = src_x.size(0)
+            cat_x = torch.cat([src_x, tgt_x], dim=0)
+            cat_class, cat_domain, _ = model(cat_x)
+            src_class = cat_class[:n_s]
+            src_domain = cat_domain[:n_s]
+            tgt_domain = cat_domain[n_s:]
 
             # Klasifikačná strata (len na source!)
             class_loss = criterion(src_class, src_y)
 
             # Doménová strata (na oboch doménach)
             # Source = 0, Target = 1
-            src_domain_labels = torch.zeros(src_x.size(0), dtype=torch.long,
-                                            device=DEVICE)
+            src_domain_labels = torch.zeros(n_s, dtype=torch.long, device=DEVICE)
             tgt_domain_labels = torch.ones(tgt_x.size(0), dtype=torch.long,
                                            device=DEVICE)
             domain_loss = (domain_criterion(src_domain, src_domain_labels) +
@@ -219,9 +223,12 @@ def train_mmd(model, source_loader, target_loader,
             src_y = src_y.to(DEVICE)
             tgt_x = tgt_x.to(DEVICE)
 
-            # Forward pass
-            src_output, src_features = model(src_x)
-            _, tgt_features = model(tgt_x)
+            n_s = src_x.size(0)
+            cat_x = torch.cat([src_x, tgt_x], dim=0)
+            cat_out, cat_feats = model(cat_x)
+            src_output = cat_out[:n_s]
+            src_features = cat_feats[:n_s]
+            tgt_features = cat_feats[n_s:]
 
             # Klasifikačná strata
             class_loss = criterion(src_output, src_y)
@@ -285,8 +292,12 @@ def train_coral(model, source_loader, target_loader,
             src_y = src_y.to(DEVICE)
             tgt_x = tgt_x.to(DEVICE)
 
-            src_output, src_features = model(src_x)
-            _, tgt_features = model(tgt_x)
+            n_s = src_x.size(0)
+            cat_x = torch.cat([src_x, tgt_x], dim=0)
+            cat_out, cat_feats = model(cat_x)
+            src_output = cat_out[:n_s]
+            src_features = cat_feats[:n_s]
+            tgt_features = cat_feats[n_s:]
 
             class_loss = criterion(src_output, src_y)
             c_loss = coral_loss(src_features, tgt_features)
@@ -354,12 +365,16 @@ def train_cdan(model, source_loader, target_loader,
             src_y = src_y.to(DEVICE)
             tgt_x = tgt_x.to(DEVICE)
 
-            src_class, src_domain, _ = model(src_x)
-            _, tgt_domain, _ = model(tgt_x)
+            n_s = src_x.size(0)
+            cat_x = torch.cat([src_x, tgt_x], dim=0)
+            cat_class, cat_domain, _ = model(cat_x)
+            src_class = cat_class[:n_s]
+            src_domain = cat_domain[:n_s]
+            tgt_domain = cat_domain[n_s:]
 
             class_loss = criterion(src_class, src_y)
 
-            src_domain_labels = torch.zeros(src_x.size(0), dtype=torch.long, device=DEVICE)
+            src_domain_labels = torch.zeros(n_s, dtype=torch.long, device=DEVICE)
             tgt_domain_labels = torch.ones(tgt_x.size(0), dtype=torch.long, device=DEVICE)
             domain_loss = (domain_criterion(src_domain, src_domain_labels) +
                            domain_criterion(tgt_domain, tgt_domain_labels))
@@ -430,12 +445,19 @@ def train_contrastive(model, source_loader, target_loader,
             src_y = src_y.to(DEVICE)
             tgt_x = tgt_x.to(DEVICE)
 
+            # Konkatenovaný forward (BatchNorm vidí obe domény)
+            n_s = src_x.size(0)
+            cat_x = torch.cat([src_x, tgt_x], dim=0)
+            cat_out, cat_feats = model(cat_x)
+            src_output = cat_out[:n_s]
+            src_features = cat_feats[:n_s]
+            tgt_output = cat_out[n_s:]
+            tgt_features = cat_feats[n_s:]
+
             # Source: supervised classification
-            src_output, src_features = model(src_x)
             class_loss = criterion(src_output, src_y)
 
             # Target: pseudo-labels via confidence thresholding
-            tgt_output, tgt_features = model(tgt_x)
             tgt_probs = torch.softmax(tgt_output, dim=1)
             tgt_conf, tgt_pseudo = tgt_probs.max(dim=1)
 

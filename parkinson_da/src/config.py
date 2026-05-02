@@ -40,13 +40,16 @@ WEIGHT_DECAY = 1e-4
 
 # ---- Domain adaptácia ----
 # DANN: Ganin & Lempitsky (2015) https://arxiv.org/abs/1409.7495
-DANN_LAMBDA = 0.5
+# Ganin et al. recommend lambda saturating at 1.0 with sigmoid schedule.
+DANN_LAMBDA = 1.0
 
 # MMD: Gretton et al. (2012) https://jmlr.org/papers/v13/gretton12a.html
-MMD_LAMBDA = 0.5
+MMD_LAMBDA = 1.0
 
 # CORAL: Sun & Saenko (2016) https://arxiv.org/abs/1607.01719
-CORAL_LAMBDA = 1.0
+# Note: Sun & Saenko normalize by 4*d^2; with d=64 (vs d=4096 in original)
+# the loss magnitude is ~1000x smaller, so we scale lambda accordingly.
+CORAL_LAMBDA = 30.0
 
 # CDAN: Long et al. (2018) https://arxiv.org/abs/1705.10667
 # Conditional Adversarial Domain Adaptation (class-conditional DANN)
@@ -60,6 +63,12 @@ CONTRASTIVE_CONF = 0.75      # min pseudo-label confidence for target samples
 
 # ---- Bootstrap štatistika ----
 N_BOOTSTRAP = 1000           # počet bootstrap iterácií pre CI
+
+# ---- Multi-seed štatistika (robust experiments) ----
+# Robustný experiment: každá metóda sa trénuje N krát s rôznymi seedmi,
+# AUC sa agreguje (mean ± std) a Δ-AUC oproti baseline sa testuje
+# pomocou paired bootstrap (rovnaké test indices pre obe metódy → tesnejšie CI).
+SEEDS = [42, 7, 123, 2024, 99, 31, 256, 777, 1337, 0]
 
 # ---- Dáta ----
 # 12 spoločných akustických príznakov (Oxford ↔ Istanbul)
